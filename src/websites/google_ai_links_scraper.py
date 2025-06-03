@@ -79,8 +79,7 @@ if soup:
         if 'checked' not in combined_df.columns:
             combined_df['checked'] = False
         else:
-            combined_df['checked'] = combined_df['checked'].fillna(False)
-
+            combined_df['checked'] = combined_df['checked'].fillna(False).astype(bool)
         # Save the updated DataFrame back to CSV
         combined_df.to_csv(csv_file, index=False)
     else:
