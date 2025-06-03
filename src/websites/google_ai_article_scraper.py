@@ -70,27 +70,28 @@ def scrape_data(soup, url):
     return article_data
 
 # --- Run for all URLs in the CSV and update 'checked' column ---
-df = pd.read_csv(CSV_FILE)
-output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
-os.makedirs(output_dir, exist_ok=True)
+def scrape_articles_from_links():
+    df = pd.read_csv(CSV_FILE)
+    output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
+    os.makedirs(output_dir, exist_ok=True)
 
-for idx, row in df.iterrows():
-    if not row.get('checked', False):
-        url = row['url']
-        soup = get_url(url)
-        if soup:
-            article_json = scrape_data(soup, url)
-            safe_title = "".join(
-                c if c.isalnum() or c in (' ', '-', '_') else '_' for c in row['title']
-            )[:50]
-            output_path = os.path.join(output_dir, f"{idx}_{safe_title}.json")
-            try:
-                with open(output_path, 'w', encoding='utf-8') as f:
-                    json.dump(article_json, f, ensure_ascii=False, indent=2)
-                df.at[idx, 'checked'] = True
-            except Exception as e:
-                print(f"Failed to write JSON for {url}: {e}")
-        else:
-            print(f"Failed to fetch the article: {url}")
+    for idx, row in df.iterrows():
+        if not row.get('checked', False):
+            url = row['url']
+            soup = get_url(url)
+            if soup:
+                article_json = scrape_data(soup, url)
+                safe_title = "".join(
+                    c if c.isalnum() or c in (' ', '-', '_') else '_' for c in row['title']
+                )[:50]
+                output_path = os.path.join(output_dir, f"{idx}_{safe_title}.json")
+                try:
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        json.dump(article_json, f, ensure_ascii=False, indent=2)
+                    df.at[idx, 'checked'] = True
+                except Exception as e:
+                    print(f"Failed to write JSON for {url}: {e}")
+            else:
+                print(f"Failed to fetch the article: {url}")
 
-df.to_csv(CSV_FILE, index=False)
+    df.to_csv(CSV_FILE, index=False)

@@ -55,32 +55,33 @@ def get_links(soup, base_url):
     title_url_pairs = list(zip(raw_titles, post_urls))
     return title_url_pairs
 
-csv_file = './data/raw/google_ai_links.csv'
-base_url = load_base_url()
-soup = get_url(base_url)
-if soup:
-    links = get_links(soup, base_url)
-    if links:
-        # Load existing data if file exists, otherwise create an empty DataFrame
-        if os.path.exists(csv_file):
-            existing_df = pd.read_csv(csv_file)
+def scrape_homepage():
+    csv_file = './data/raw/google_ai_links.csv'
+    base_url = load_base_url()
+    soup = get_url(base_url)
+    if soup:
+        links = get_links(soup, base_url)
+        if links:
+            # Load existing data if file exists, otherwise create an empty DataFrame
+            if os.path.exists(csv_file):
+                existing_df = pd.read_csv(csv_file)
+            else:
+                existing_df = pd.DataFrame(columns=['title', 'url'])
+
+            # Create new DataFrame from scraped data and add 'checked' column
+            new_df = pd.DataFrame(links, columns=['title', 'url'])
+            new_df['checked'] = False
+
+            # Concatenate and drop duplicates
+            combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            combined_df.drop_duplicates(subset=['title', 'url'], inplace=True)
+
+            # Ensure 'checked' column exists and fill NaN with False
+            if 'checked' not in combined_df.columns:
+                combined_df['checked'] = False
+            else:
+                combined_df['checked'] = combined_df['checked'].fillna(False).astype(bool)
+            # Save the updated DataFrame back to CSV
+            combined_df.to_csv(csv_file, index=False)
         else:
-            existing_df = pd.DataFrame(columns=['title', 'url'])
-
-        # Create new DataFrame from scraped data and add 'checked' column
-        new_df = pd.DataFrame(links, columns=['title', 'url'])
-        new_df['checked'] = False
-
-        # Concatenate and drop duplicates
-        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-        combined_df.drop_duplicates(subset=['title', 'url'], inplace=True)
-
-        # Ensure 'checked' column exists and fill NaN with False
-        if 'checked' not in combined_df.columns:
-            combined_df['checked'] = False
-        else:
-            combined_df['checked'] = combined_df['checked'].fillna(False).astype(bool)
-        # Save the updated DataFrame back to CSV
-        combined_df.to_csv(csv_file, index=False)
-    else:
-        print("No links found.")
+            print("No links found.")
