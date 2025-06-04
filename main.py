@@ -41,15 +41,21 @@ def scrape_and_process():
             progress_bar.progress(66)
             st.write("Step 2 completed: Articles downloaded")
             
-            # Step 3: Download images (100% of total)
+            # Step 3: Download images with accurate counting
             status.write("### 🖼️ Step 3/3: Downloading images...")
             results = batch_process_articles()
-            total_images = 0
+            
+            actual_downloads = 0
+            skipped_images = 0
             if results:
-                total_images = sum(len(result.get('downloads', [])) for result in results if result)
-                status.write(f"*Downloaded {total_images} images from {len(results)} articles*")
+                for result in results:
+                    if result:  # Check if result is not None
+                        actual_downloads += result.get('new_downloads', 0)
+                        skipped_images += result.get('skipped_images', 0)
+                
+                status.write(f"*Downloaded {actual_downloads} new images (Skipped {skipped_images} existing images)*")
+            
             progress_bar.progress(100)
-            st.write("Step 3 completed: Images downloaded")
             
             # Final summary
             status.update(label="✅ Scraping completed!", state="complete")
@@ -57,8 +63,9 @@ def scrape_and_process():
             
             return {
                 'new_articles': new_articles_count,
-                'processed_articles': processed_count,  # Use the actual count
-                'images_downloaded': total_images
+                'processed_articles': processed_count,
+                'images_downloaded': actual_downloads,
+                'images_skipped': skipped_images
             }
             
     except Exception as e:

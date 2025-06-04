@@ -89,16 +89,18 @@ def fetch_and_save_image(url: str, save_path: str) -> bool:
         logger.error(f"Unexpected error downloading {url}: {str(e)}", exc_info=True)
         return False
 
+def image_exists(img_path: str) -> bool:
+    """Check if image already exists and is valid."""
+    try:
+        if os.path.exists(img_path):
+            # Check if file is not empty
+            return os.path.getsize(img_path) > 0
+    except Exception as e:
+        logger.error(f"Error checking image {img_path}: {e}")
+    return False
+
 def process_article_images(json_path: str, images_root: str = 'images') -> Optional[Dict]:
-    """
-    Process and download images from a single article JSON file.
-    
-    Args:
-        json_path: Path to the article JSON file
-        images_root: Root directory for saving images
-    Returns:
-        Optional[Dict]: Results of the download operation or None if failed
-    """
+    """Process and download images from a single article JSON file."""
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             article_data = json.load(f)
@@ -115,6 +117,7 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
         os.makedirs(article_dir, exist_ok=True)
 
         # Process sections with images
+        actual_downloads = 0
         download_results = []
         sections_with_images = [
             section for section in article_data.get('sections', [])
@@ -123,21 +126,40 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
 
         if not sections_with_images:
             logger.info(f"No images found in article {json_path}")
-            update_download_status(article_url, True)  # Mark as processed even if no images
-            return None
+            update_download_status(article_url, True)
+            return {
+                'article_index': article_index,
+                'downloads': [],
+                'total_images': 0,
+                'skipped_images': 0,
+                'new_downloads': 0
+            }
 
         total_images = sum(len(section.get('images', [])) for section in sections_with_images)
-        logger.info(f"Found {total_images} images in {len(sections_with_images)} sections")
+        logger.info(f"Found {total_images} images to process")
 
         # Download images
         all_successful = True
+        skipped_count = 0
         for section in sorted(sections_with_images, key=lambda x: x.get('section_id', 0)):
             section_id = section.get('section_id')
-            for idx, img_url in enumerate(section.get('images', [])):
+            valid_images = [url for url in section.get('images', []) if url and url.strip()]
+            
+            for idx, img_url in enumerate(valid_images):
                 img_name = f"image_{section_id}{'.'+str(idx+1) if idx > 0 else ''}.jpg"
                 img_path = os.path.join(article_dir, img_name)
+                
+                if image_exists(img_path):
+                    skipped_count += 1
+                    logger.debug(f"Skipped existing image: {img_path}")
+                    continue
+
                 success = fetch_and_save_image(img_url, img_path)
+                if success:
+                    actual_downloads += 1
+                    logger.debug(f"Successfully downloaded: {img_path}")
                 all_successful &= success
+                
                 download_results.append({
                     'url': img_url,
                     'path': img_path,
@@ -145,9 +167,17 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
                     'section_id': section_id
                 })
 
-        # Update CSV status only if all images were downloaded successfully
+        # Update CSV status and log results
         update_download_status(article_url, all_successful)
-        return {'article_index': article_index, 'downloads': download_results}
+        logger.info(f"Article {article_index}: Successfully downloaded {actual_downloads} new images, Skipped {skipped_count} existing images")
+        
+        return {
+            'article_index': article_index,
+            'downloads': download_results,
+            'total_images': total_images,
+            'skipped_images': skipped_count,
+            'new_downloads': actual_downloads
+        }
 
     except Exception as e:
         logger.error(f"Error processing article {json_path}: {str(e)}")

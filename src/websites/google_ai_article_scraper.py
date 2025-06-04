@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from src.utils.logger import setup_logger
 from src.utils.rate_limiter import rate_limit
 from src.utils.retry import retry_on_failure
+import glob
 
 # Load environment variables
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
@@ -114,19 +115,40 @@ def scrape_data(soup, url):
 def save_article(article_data, idx):
     """Save the scraped article data to a JSON file."""
     try:
+        # Get highest existing index
+        output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
+        os.makedirs(output_dir, exist_ok=True)
+        
+        existing_files = glob.glob(os.path.join(output_dir, "*.json"))
+        max_index = -1
+        for f in existing_files:
+            try:
+                file_index = int(os.path.basename(f).split('_')[0])
+                max_index = max(max_index, file_index)
+            except ValueError:
+                continue
+        
+        # Create new index
+        new_index = max_index + 1
+        
+        # Create safe filename
         safe_title = "".join(
             c if c.isalnum() or c in (' ', '-', '_') else '_' 
             for c in article_data['title']
         )[:50]
-        output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f"{idx}_{safe_title}.json")
+        
+        # Save with new index
+        output_path = os.path.join(output_dir, f"{new_index}_{safe_title}.json")
         
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(article_data, f, ensure_ascii=False, indent=2)
-        logger.info(f"Successfully saved article: {safe_title}")
+        logger.info(f"Successfully saved article: {safe_title} with index {new_index}")
+        
+        return new_index
+        
     except Exception as e:
         logger.error(f"Error saving article {idx}: {e}", exc_info=True)
+        return None
 
 # --- Run for all URLs in the CSV and update 'checked' column ---
 def scrape_articles_from_links(progress_callback=None):
