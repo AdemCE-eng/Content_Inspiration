@@ -4,22 +4,42 @@ import json
 from datetime import datetime, timezone
 import os
 import pandas as pd
+from dotenv import load_dotenv
 from src.utils.logger import setup_logger
+from src.utils.rate_limiter import rate_limit
+from src.utils.retry import retry_on_failure
 
-CSV_FILE = os.path.join(os.path.dirname(__file__), '../../data/raw/google_ai_links.csv')
-USER_AGENT = os.getenv("USER_AGENT")
-HEADERS = {'User-Agent': USER_AGENT}
+# Load environment variables
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+load_dotenv(env_path)
+
 logger = setup_logger('article_scraper')
 
+# Get User-Agent from environment variables with validation
+USER_AGENT = os.getenv("USER_AGENT")
+if not USER_AGENT:
+    logger.error("USER_AGENT not found in .env file")
+    raise ValueError("USER_AGENT environment variable is required")
+
+HEADERS = {
+    'User-Agent': USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+}
+
+CSV_FILE = os.path.join(os.path.dirname(__file__), '../../data/raw/google_ai_links.csv')
+
+@rate_limit(seconds_per_request=2)
+@retry_on_failure(max_retries=3)
 def get_url(url):
+    """Fetch URL with rate limiting and retry logic."""
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-        return soup
+        return BeautifulSoup(response.content, 'html.parser')
     except Exception as e:
         logger.error(f"Error fetching {url}: {e}")
-        return None
+        raise
 
 def scrape_data(soup, url):
     p_tags = soup.find_all("p", limit=10)
@@ -91,38 +111,58 @@ def scrape_data(soup, url):
     article_data["sections"] = sections
     return article_data
 
-# --- Run for all URLs in the CSV and update 'checked' column ---
-def scrape_articles_from_links():
+def save_article(article_data, idx):
+    """Save the scraped article data to a JSON file."""
     try:
-        df = pd.read_csv(CSV_FILE)
+        safe_title = "".join(
+            c if c.isalnum() or c in (' ', '-', '_') else '_' 
+            for c in article_data['title']
+        )[:50]
         output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
         os.makedirs(output_dir, exist_ok=True)
-
-        for count, (idx, row) in enumerate(df.iterrows(), start=1):
-            if not row.get('checked', False):
-                url = row['url']
-                logger.info(f"Processing article {count}/{len(df)}: {url}")
-                try:
-                    soup = get_url(url)
-                    if soup:
-                        article_json = scrape_data(soup, url)
-                        safe_title = "".join(
-                            c if c.isalnum() or c in (' ', '-', '_') else '_' 
-                            for c in row['title']
-                        )[:50]
-                        output_path = os.path.join(output_dir, f"{idx}_{safe_title}.json")
-                        
-                        with open(output_path, 'w', encoding='utf-8') as f:
-                            json.dump(article_json, f, ensure_ascii=False, indent=2)
-                        df.at[idx, 'checked'] = True
-                        logger.info(f"Successfully saved article: {safe_title}")
-                    else:
-                        logger.error(f"Failed to fetch article: {url}")
-                except Exception as e:
-                    logger.error(f"Error processing article {url}: {str(e)}", exc_info=True)
-
-        df.to_csv(CSV_FILE, index=False)
-        logger.info("Completed processing all articles")
+        output_path = os.path.join(output_dir, f"{idx}_{safe_title}.json")
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(article_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"Successfully saved article: {safe_title}")
     except Exception as e:
-        logger.error(f"Fatal error in article scraping: {str(e)}", exc_info=True)
-        raise
+        logger.error(f"Error saving article {idx}: {e}", exc_info=True)
+
+# --- Run for all URLs in the CSV and update 'checked' column ---
+def scrape_articles_from_links(progress_callback=None):
+    """Scrape articles with progress tracking."""
+    try:
+        df = pd.read_csv(CSV_FILE)
+        to_process = df[~df.get('checked', False)]
+        total_articles = len(to_process)
+        processed = 0
+        
+        if total_articles == 0:
+            logger.info("No new articles to process")
+            return 0
+
+        for idx, row in to_process.iterrows():
+            try:
+                if progress_callback:
+                    progress = processed / total_articles
+                    progress_callback(progress, f"Processing article {processed + 1}/{total_articles}")
+                
+                url = row['url']
+                if soup := get_url(url):
+                    article_data = scrape_data(soup, url)
+                    save_article(article_data, idx)
+                    df.at[idx, 'checked'] = True
+                    processed += 1
+                    
+                    # Save progress after each article
+                    df.to_csv(CSV_FILE, index=False)
+                
+            except Exception as e:
+                logger.error(f"Error processing article {idx}: {e}")
+                continue
+        
+        return processed
+        
+    except Exception as e:
+        logger.error(f"Fatal error in article scraping: {e}")
+        return 0

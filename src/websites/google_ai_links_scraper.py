@@ -4,21 +4,33 @@ import os
 import yaml
 import pandas as pd
 from src.utils.logger import setup_logger
+from dotenv import load_dotenv
 
 logger = setup_logger('links_scraper')
 
+# Load environment variables
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+load_dotenv(env_path)
+
+# Get User-Agent from environment variables with validation
 USER_AGENT = os.getenv("USER_AGENT")
+if not USER_AGENT:
+    logger.error("USER_AGENT not found in .env file")
+    raise ValueError("USER_AGENT environment variable is required")
+
 HEADERS = {
-    'User-Agent': USER_AGENT
+    'User-Agent': USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
 }
 
-def load_base_url():
+def load_base_url(url_index=0):
     """Load the base URL from the YAML config file."""
     try:
         config_path = os.path.join("config", "config.yaml")
         with open(config_path, 'r', encoding='utf-8') as file:
             config = yaml.safe_load(file)
-        base_url = config.get('urls', [None])[0]
+        base_url = config.get('urls', [None])[url_index]
         if not base_url:
             logger.error("No URL found in config file")
             return None
