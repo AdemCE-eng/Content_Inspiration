@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import os
 import yaml
 import pandas as pd
+from src.utils.logger import setup_logger
+
+logger = setup_logger('links_scraper')
 
 USER_AGENT = os.getenv("USER_AGENT")
 HEADERS = {
@@ -10,32 +13,45 @@ HEADERS = {
 }
 
 def load_base_url():
-    # Load the base URL from the YAML config file
-    config_path = os.path.join("config", "config.yaml")
-    with open(config_path, 'r', encoding='utf-8') as file:
-        config = yaml.safe_load(file)
-    return config.get('urls', [None])[0]
+    """Load the base URL from the YAML config file."""
+    try:
+        config_path = os.path.join("config", "config.yaml")
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+        base_url = config.get('urls', [None])[0]
+        if not base_url:
+            logger.error("No URL found in config file")
+            return None
+        logger.info(f"Loaded base URL: {base_url}")
+        return base_url
+    except Exception as e:
+        logger.error(f"Error loading config: {str(e)}", exc_info=True)
+        return None
 
 def get_url(base_url):
-    # Fetch the HTML content of the base URL
+    """Fetch the HTML content of the base URL."""
     try:
+        logger.info(f"Fetching URL: {base_url}")
         response = requests.get(base_url, headers=HEADERS)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         return soup
     except requests.RequestException as e:
-        print(f"Error fetching {base_url}: {e}")
+        logger.error(f"Error fetching {base_url}: {str(e)}", exc_info=True)
         return None
 
 def get_links(soup, base_url):
-    # Extract titles and URLs from the soup object
+    """Extract titles and URLs from the soup object."""
     if not soup:
-        print("No soup object provided.")
+        logger.error("No soup object provided")
         return None
 
     raw_titles = []
     post_urls = []
-    for card_div in soup.find_all('li', class_='glue-grid__col'):
+    cards = soup.find_all('li', class_='glue-grid__col')
+    logger.info(f"Found {len(cards)} article cards")
+
+    for card_div in cards:
         title_span = card_div.find('span', class_='headline-5')
         link_tag = card_div.find('a')
         if title_span and link_tag and link_tag.has_attr('href'):
@@ -46,42 +62,58 @@ def get_links(soup, base_url):
             raw_titles.append(raw_title)
             post_urls.append(post_url)
         else:
-            print("Missing title or link in a card.")
-            
+            logger.warning("Missing title or link in a card")
+    
     if not raw_titles:
-        print("No titles found in the provided URL.")
+        logger.warning("No titles found in the provided URL")
         return None    
 
-    title_url_pairs = list(zip(raw_titles, post_urls))
-    return title_url_pairs
+    return list(zip(raw_titles, post_urls))
 
 def scrape_homepage():
+    """Main function to scrape the homepage and update the CSV file."""
     csv_file = './data/raw/google_ai_links.csv'
-    base_url = load_base_url()
-    soup = get_url(base_url)
-    if soup:
+    try:
+        base_url = load_base_url()
+        if not base_url:
+            return
+
+        soup = get_url(base_url)
+        if not soup:
+            return
+
         links = get_links(soup, base_url)
-        if links:
-            # Load existing data if file exists, otherwise create an empty DataFrame
-            if os.path.exists(csv_file):
-                existing_df = pd.read_csv(csv_file)
-            else:
-                existing_df = pd.DataFrame(columns=['title', 'url'])
+        if not links:
+            logger.error("No links found")
+            return
 
-            # Create new DataFrame from scraped data and add 'checked' column
-            new_df = pd.DataFrame(links, columns=['title', 'url'])
-            new_df['checked'] = False
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(csv_file), exist_ok=True)
 
-            # Concatenate and drop duplicates
-            combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            combined_df.drop_duplicates(subset=['title', 'url'], inplace=True)
-
-            # Ensure 'checked' column exists and fill NaN with False
-            if 'checked' not in combined_df.columns:
-                combined_df['checked'] = False
-            else:
-                combined_df['checked'] = combined_df['checked'].fillna(False).astype(bool)
-            # Save the updated DataFrame back to CSV
-            combined_df.to_csv(csv_file, index=False)
+        # Load or create DataFrame
+        if os.path.exists(csv_file):
+            existing_df = pd.read_csv(csv_file)
+            logger.info(f"Loaded existing CSV with {len(existing_df)} entries")
         else:
-            print("No links found.")
+            existing_df = pd.DataFrame(columns=['title', 'url'])
+            logger.info("Created new DataFrame")
+
+        # Update DataFrame
+        new_df = pd.DataFrame(links, columns=['title', 'url'])
+        new_df['checked'] = False
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+        combined_df.drop_duplicates(subset=['title', 'url'], inplace=True)
+        
+        # Handle checked column
+        if 'checked' not in combined_df.columns:
+            combined_df['checked'] = False
+        else:
+            combined_df['checked'] = combined_df['checked'].fillna(False)
+            combined_df['checked'] = combined_df['checked'].astype(bool)
+
+        # Save results
+        combined_df.to_csv(csv_file, index=False)
+        logger.info(f"Saved {len(combined_df)} entries to CSV")
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in scrape_homepage: {str(e)}", exc_info=True)
