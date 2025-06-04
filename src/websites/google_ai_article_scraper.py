@@ -52,14 +52,16 @@ def scrape_data(soup, url):
     # Debug print to check what we're finding
     logger.debug(f"Found {len(article_body.find_all('img'))} images in article {url}")
 
-    for elem in article_body.find_all(["h2", "p", "img"], recursive=True):
-        if elem.name == "h2":
+    # Find all h2, h3, p, and img tags
+    for elem in article_body.find_all(["h2", "h3", "p", "img"], recursive=True):
+        if elem.name in ["h2", "h3"]:
             if current_section["paragraphs"] or current_section["images"]:
                 sections.append(current_section)
             section_counter += 1
             current_section = {
                 "section_id": section_counter,
                 "section_title": elem.text.strip(),
+                "section_level": 2 if elem.name == "h2" else 3,  # Track heading level
                 "paragraphs": [],
                 "images": []
             }
