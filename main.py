@@ -15,7 +15,11 @@ def count_new_articles():
         if 'checked' not in df.columns:
             # If the column is missing, treat all rows as unchecked
             return len(df)
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 1cc53496c7d8515629c153b6b276ebc3b77ece66
         # Ensure boolean dtype and count entries that are not checked
         unchecked = ~df['checked'].fillna(False).astype(bool)
         return int(unchecked.sum())
