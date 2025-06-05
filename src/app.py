@@ -106,13 +106,34 @@ def display_article(article):
                 except Exception as e:
                     col.error(f"Error loading image: {str(e)}")
 
+def load_read_status():
+    """Load the read status of articles from a JSON file."""
+    try:
+        status_path = os.path.join('data', 'processed', 'read_status.json')
+        with open(status_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_read_status(read_status):
+    """Save the read status of articles to a JSON file."""
+    status_dir = os.path.join('data', 'processed')
+    os.makedirs(status_dir, exist_ok=True)
+    status_path = os.path.join(status_dir, 'read_status.json')
+    with open(status_path, 'w') as f:
+        json.dump(read_status, f)
+
 def run_streamlit_app():
-    # Load articles
+    # Load articles and read status
     articles = load_articles()
     filtered_articles = articles.copy()
-    
+
+    # Initialize read status
+    if 'read_articles' not in st.session_state:
+        st.session_state.read_articles = load_read_status()
+
     with st.sidebar:
-        # 1. Filters section
+        # Filters section
         st.subheader("⚙️ Filters")
         
         # Sort options
@@ -212,8 +233,8 @@ def run_streamlit_app():
 
         # 5. Article selection (only the selection part stays in sidebar)
         st.markdown("---")
-        selected_indices = []  # Initialize as empty list
-        article_titles = []  # Initialize as empty list
+        selected_indices = []
+        article_titles = []
         if filtered_articles:
             article_titles = [article.get('title', 'Untitled') for article in filtered_articles]
             selected_indices = st.multiselect(
@@ -222,15 +243,63 @@ def run_streamlit_app():
                 format_func=lambda x: article_titles[x]
             )
 
-    # Move article display outside sidebar (in main area)
-    if not filtered_articles:
-        st.warning("No articles match your current filters.")
-    elif not selected_indices:
-        st.info("Please select one or more articles from the sidebar.")
-    else:
-        # Display selected articles in main content area
+    # Main page content
+    st.title("📚 Articles")
+    
+    # Create columns for the table header first
+    header_cols = st.columns([0.5, 0.2, 0.15, 0.15])
+    header_cols[0].markdown("**Title**")
+    header_cols[1].markdown("**Date**")
+    header_cols[2].markdown("**Source**")
+    header_cols[3].markdown("**Read**")
+    
+    st.markdown("---")
+    
+    # Display articles in table format
+    for idx, article in enumerate(filtered_articles):
+        title = article.get('title', 'Untitled')
+        date = article.get('published_date', 'No date')
+        url = article.get('url', '')
+        article_id = article.get('_file_path', str(idx))
+        
+        # Create columns for each article row with matching widths
+        cols = st.columns([0.5, 0.2, 0.15, 0.15])
+        
+        # Title with click to select
+        if cols[0].button(f"{title[:50]}..." if len(title) > 50 else title, 
+                        key=f"btn_{idx}"):
+            if idx not in st.session_state.get('selected_articles', set()):
+                st.session_state.selected_articles = {idx}
+            else:
+                st.session_state.selected_articles.remove(idx)
+        
+        # Date
+        cols[1].write(date.split(' ')[0] if date else "")
+        
+        # URL Button
+        if url:
+            cols[2].link_button("🔗", url, help="Open article source", use_container_width=True)
+        
+        # Read checkbox
+        read_state = st.session_state.read_articles.get(article_id, False)
+        if cols[3].checkbox("", value=read_state, key=f"read_{idx}", help="Mark as read"):
+            st.session_state.read_articles[article_id] = True
+        else:
+            st.session_state.read_articles[article_id] = False
+
+    # Remove the duplicate header that was at the bottom
+    
+    # Display selected article content
+    st.markdown("---")
+    selected_indices = st.session_state.get('selected_articles', set())
+    if selected_indices:
         for idx in selected_indices:
-            with st.expander(article_titles[idx], expanded=True):
-                display_article(filtered_articles[idx])
-            st.markdown("---")
+            article = filtered_articles[idx]
+            with st.expander(article.get('title', 'Untitled'), expanded=True):
+                display_article(article)
+    else:
+        st.info("Click on an article title to view its content.")
+
+    # Save read status at the end
+    save_read_status(st.session_state.read_articles)
 
