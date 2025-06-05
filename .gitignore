@@ -1,5 +1,0 @@
-__pycache__/
-*.pyc
-.env
-.gitignore
-# Ignore Python bytecode files
