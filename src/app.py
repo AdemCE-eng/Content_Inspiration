@@ -132,173 +132,162 @@ def run_streamlit_app():
     if 'read_articles' not in st.session_state:
         st.session_state.read_articles = load_read_status()
 
-    with st.sidebar:
-        # Filters section
-        st.subheader("⚙️ Filters")
-        
-        # Sort options
-        sort_method = st.selectbox(
-            "Sort by",
-            ["Date (Newest First)", "Date (Oldest First)", "Title (A-Z)", "Title (Z-A)"]
-        )
-
-        # Date range filter
-        dates = [
-            parse_date(article.get('published_date'))
-            for article in articles 
-            if article.get('published_date')
-        ]
-        dates = sorted([d for d in dates if d != datetime.min])
-        
-        if dates:
-            # Convert datetime objects to strings for display
-            date_strings = [d.strftime('%B %d, %Y') for d in dates]
-            date_range = st.select_slider(
-                "Date Range",
-                options=date_strings,
-                value=(date_strings[0], date_strings[-1])
-            )
-            
-            # Convert selected strings back to datetime for filtering
-            start_date = datetime.strptime(date_range[0], '%B %d, %Y')
-            end_date = datetime.strptime(date_range[1], '%B %d, %Y')
-            
-            # Apply date filter
-            filtered_articles = [
-                article for article in filtered_articles 
-                if start_date <= parse_date(article.get('published_date', '')) <= end_date
-            ]
-
-        # 2. Search section
-        st.markdown("---")
-        st.subheader("🔍 Search")
-        search_title = st.text_input("Search in Title", key="search_title")
-        search_content = st.text_input("Search in Content", key="search_content")
-
-        # Add a small delay to prevent too frequent updates
-        if st.session_state.get('search_title', '') != search_title:
-            st.session_state.search_title = search_title
-            st.rerun()
-        
-        if st.session_state.get('search_content', '') != search_content:
-            st.session_state.search_content = search_content
-            st.rerun()
-
-        # Apply filters for search
-        if search_title:
-            filtered_articles = [
-                article for article in filtered_articles 
-                if any(
-                    search_title.lower() in title.lower()
-                    for title in [
-                        article.get('title', ''),
-                        *[section.get('section_title', '') for section in article.get('sections', [])]
-                    ]
-                )
-            ]
-
-        if search_content:
-            filtered_articles = [
-                article for article in filtered_articles 
-                if any(
-                    search_content.lower() in text.lower()
-                    for section in article.get('sections', [])
-                    for text in section.get('paragraphs', [])
-                )
-            ]
-
-        # Apply sorting
-        if filtered_articles:
-            if sort_method == "Date (Newest First)":
-                filtered_articles.sort(
-                    key=lambda x: parse_date(x.get('published_date')),
-                    reverse=True
-                )
-            elif sort_method == "Date (Oldest First)":
-                filtered_articles.sort(
-                    key=lambda x: parse_date(x.get('published_date'))
-                )
-            elif sort_method == "Title (A-Z)":
-                filtered_articles.sort(key=lambda x: x.get('title', '').lower())
-            elif sort_method == "Title (Z-A)":
-                filtered_articles.sort(key=lambda x: x.get('title', '').lower(), reverse=True)
-
-        # 3. Results count
-        st.markdown("---")
-        st.info(f"Found {len(filtered_articles)} matching articles")
-
-        # 4. Clear filters button
-        if st.button("Clear Filters"):
-            st.rerun()
-
-        # 5. Article selection (only the selection part stays in sidebar)
-        st.markdown("---")
-        selected_indices = []
-        article_titles = []
-        if filtered_articles:
-            article_titles = [article.get('title', 'Untitled') for article in filtered_articles]
-            selected_indices = st.multiselect(
-                "Select articles to view:",
-                range(len(article_titles)),
-                format_func=lambda x: article_titles[x]
-            )
-
-    # Main page content
-    st.title("📚 Articles")
-    
-    # Create columns for the table header first
-    header_cols = st.columns([0.5, 0.2, 0.15, 0.15])
-    header_cols[0].markdown("**Title**")
-    header_cols[1].markdown("**Date**")
-    header_cols[2].markdown("**Source**")
-    header_cols[3].markdown("**Read**")
-    
-    st.markdown("---")
-    
-    # Display articles in table format
-    for idx, article in enumerate(filtered_articles):
-        title = article.get('title', 'Untitled')
-        date = article.get('published_date', 'No date')
-        url = article.get('url', '')
-        article_id = article.get('_file_path', str(idx))
-        
-        # Create columns for each article row with matching widths
-        cols = st.columns([0.5, 0.2, 0.15, 0.15])
-        
-        # Title with click to select
-        if cols[0].button(f"{title[:50]}..." if len(title) > 50 else title, 
-                        key=f"btn_{idx}"):
-            if idx not in st.session_state.get('selected_articles', set()):
-                st.session_state.selected_articles = {idx}
-            else:
-                st.session_state.selected_articles.remove(idx)
-        
-        # Date
-        cols[1].write(date.split(' ')[0] if date else "")
-        
-        # URL Button
-        if url:
-            cols[2].link_button("🔗", url, help="Open article source", use_container_width=True)
-        
-        # Read checkbox
-        read_state = st.session_state.read_articles.get(article_id, False)
-        if cols[3].checkbox("", value=read_state, key=f"read_{idx}", help="Mark as read"):
-            st.session_state.read_articles[article_id] = True
-        else:
-            st.session_state.read_articles[article_id] = False
-
-    # Remove the duplicate header that was at the bottom
-    
-    # Display selected article content
-    st.markdown("---")
+    # Check if we're viewing an article
     selected_indices = st.session_state.get('selected_articles', set())
     if selected_indices:
+        # Display single article view
+        if st.button("← Back to Articles"):
+            st.session_state.selected_articles = set()
+            st.rerun()
+        
         for idx in selected_indices:
             article = filtered_articles[idx]
-            with st.expander(article.get('title', 'Untitled'), expanded=True):
-                display_article(article)
+            display_article(article)
     else:
-        st.info("Click on an article title to view its content.")
+        # Display main articles list
+        with st.sidebar:
+            # Filters section
+            st.subheader("⚙️ Filters")
+            
+            # Sort options
+            sort_method = st.selectbox(
+                "Sort by",
+                ["Date (Newest First)", "Date (Oldest First)", "Title (A-Z)", "Title (Z-A)"]
+            )
+
+            # Date range filter
+            dates = [
+                parse_date(article.get('published_date'))
+                for article in articles 
+                if article.get('published_date')
+            ]
+            dates = sorted([d for d in dates if d != datetime.min])
+            
+            if dates:
+                # Convert datetime objects to strings for display
+                date_strings = [d.strftime('%B %d, %Y') for d in dates]
+                date_range = st.select_slider(
+                    "Date Range",
+                    options=date_strings,
+                    value=(date_strings[0], date_strings[-1])
+                )
+                
+                # Convert selected strings back to datetime for filtering
+                start_date = datetime.strptime(date_range[0], '%B %d, %Y')
+                end_date = datetime.strptime(date_range[1], '%B %d, %Y')
+                
+                # Apply date filter
+                filtered_articles = [
+                    article for article in filtered_articles 
+                    if start_date <= parse_date(article.get('published_date', '')) <= end_date
+                ]
+
+            # Search section - keeping this intact
+            st.markdown("---")
+            st.subheader("🔍 Search")
+            search_title = st.text_input("Search in Title", key="search_title")
+            search_content = st.text_input("Search in Content", key="search_content")
+
+            # Add a small delay to prevent too frequent updates
+            if st.session_state.get('search_title', '') != search_title:
+                st.session_state.search_title = search_title
+                st.rerun()
+            
+            if st.session_state.get('search_content', '') != search_content:
+                st.session_state.search_content = search_content
+                st.rerun()
+
+            # Apply filters for search - keeping this intact
+            if search_title:
+                filtered_articles = [
+                    article for article in filtered_articles 
+                    if any(
+                        search_title.lower() in title.lower()
+                        for title in [
+                            article.get('title', ''),
+                            *[section.get('section_title', '') for section in article.get('sections', [])]
+                        ]
+                    )
+                ]
+
+            if search_content:
+                filtered_articles = [
+                    article for article in filtered_articles 
+                    if any(
+                        search_content.lower() in text.lower()
+                        for section in article.get('sections', [])
+                        for text in section.get('paragraphs', [])
+                    )
+                ]
+
+            # Results count
+            st.markdown("---")
+            st.info(f"Found {len(filtered_articles)} matching articles")
+
+        # Main page content
+        st.title("📚 Articles")
+        
+        # Create columns for the table header
+        header_cols = st.columns([0.5, 0.2, 0.15, 0.15])
+        header_cols[0].markdown("<div style='text-align: center;'><strong>Title</strong></div>", unsafe_allow_html=True)
+        header_cols[1].markdown("<div style='text-align: center;'><strong>Date</strong></div>", unsafe_allow_html=True)
+        header_cols[2].markdown("<div style='text-align: center;'><strong>Source</strong></div>", unsafe_allow_html=True)
+        header_cols[3].markdown("<div style='text-align: center;'><strong>Read</strong></div>", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Display articles in table format
+        for idx, article in enumerate(filtered_articles):
+            title = article.get('title', 'Untitled')
+            date = article.get('published_date', 'No date')
+            url = article.get('url', '')
+            article_id = article.get('_file_path', str(idx))
+            
+            # Create columns for each article row with matching widths
+            cols = st.columns([0.5, 0.2, 0.15, 0.15])
+            
+            # Title with click to select - using only Streamlit button
+            title_display = f"{title[:50]}..." if len(title) > 50 else title
+            if cols[0].button(title_display, key=f"btn_{idx}", use_container_width=True):
+                if idx not in st.session_state.get('selected_articles', set()):
+                    st.session_state.selected_articles = {idx}
+                else:
+                    st.session_state.selected_articles.remove(idx)
+            
+            # Date - centered
+            cols[1].markdown(
+                f"<div style='text-align: center;'>{date.split(' ')[0] if date else ''}</div>",
+                unsafe_allow_html=True
+            )
+            
+            # URL Button
+            if url:
+                cols[2].link_button("🔗Open", url, help="Open article source", use_container_width=True)
+            
+            # Read checkbox
+            cols[3].markdown(
+                """
+                <style>
+                /* Center the checkbox container */
+                div[data-testid="stHorizontalBlock"] > div:nth-child(4) {
+                    display: flex;
+                    justify-content: center;
+                }
+                /* Center the checkbox itself */
+                div[data-testid="stHorizontalBlock"] > div:nth-child(4) div[data-testid="stCheckbox"] {
+                    display: flex;
+                    justify-content: center;
+                    width: 100%;
+                }
+                </style>
+                """, 
+                unsafe_allow_html=True
+            )
+            read_state = st.session_state.read_articles.get(article_id, False)
+            if cols[3].checkbox("", value=read_state, key=f"read_{idx}", help="Mark as read", label_visibility="collapsed"):
+                st.session_state.read_articles[article_id] = True
+            else:
+                st.session_state.read_articles[article_id] = False
 
     # Save read status at the end
     save_read_status(st.session_state.read_articles)
