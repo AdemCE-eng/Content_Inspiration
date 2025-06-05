@@ -127,7 +127,7 @@ def run_streamlit_app():
             for article in articles 
             if article.get('published_date')
         ]
-        dates = sorted([d for d in dates if d != datetime.min])  # Remove invalid dates and sort
+        dates = sorted([d for d in dates if d != datetime.min])
         
         if dates:
             # Convert datetime objects to strings for display
@@ -148,10 +148,6 @@ def run_streamlit_app():
                 if start_date <= parse_date(article.get('published_date', '')) <= end_date
             ]
 
-        # Author filter
-        authors = sorted(list(set(article.get('author') for article in articles if article.get('author'))))
-        selected_authors = st.multiselect("Filter by Authors", authors)
-
         # 2. Search section
         st.markdown("---")
         st.subheader("🔍 Search")
@@ -167,12 +163,7 @@ def run_streamlit_app():
             st.session_state.search_content = search_content
             st.rerun()
 
-        # Apply filters one by one
-        if selected_authors:
-            filtered_articles = [a for a in filtered_articles if a.get('author') in selected_authors]
-        # Date filtering is handled earlier when date_range is defined
-            
-        # Improved search functionality for titles
+        # Apply filters for search
         if search_title:
             filtered_articles = [
                 article for article in filtered_articles 
@@ -185,7 +176,6 @@ def run_streamlit_app():
                 )
             ]
 
-        # Search in content remains the same
         if search_content:
             filtered_articles = [
                 article for article in filtered_articles 
