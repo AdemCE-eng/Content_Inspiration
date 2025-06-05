@@ -39,7 +39,13 @@ def parse_date(date_str):
     if not date_str:
         return datetime.min
     try:
-        return datetime.strptime(date_str, '%B %d, %Y')
+        # Try different date formats
+        for fmt in ['%B %d, %Y', '%Y-%m-%d', '%d/%m/%Y']:
+            try:
+                return datetime.strptime(date_str.strip(), fmt)
+            except ValueError:
+                continue
+        return datetime.min
     except (ValueError, TypeError):
         return datetime.min
     
@@ -99,39 +105,12 @@ def display_article(article):
                         col.warning(f"Image not found locally: {img_path}")
                 except Exception as e:
                     col.error(f"Error loading image: {str(e)}")
-    
-    # Debug info
-    st.sidebar.text(f"Debug Info:")
-    st.sidebar.text(f"Article URL: {article.get('url')}")
-    st.sidebar.text(f"Article Index: {article_index}")
 
 def run_streamlit_app():
-    """Run the Streamlit article viewer."""
     # Load articles
     articles = load_articles()
     filtered_articles = articles.copy()
     
-    if not articles:
-        st.warning("No articles found. Please scrape some articles first.")
-        return
-
-    # Dashboard metrics
-    st.header("📊 Dashboard")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Articles", len(articles))
-    with col2:
-        total_sections = sum(len(article.get('sections', [])) for article in articles)
-        st.metric("Total Sections", total_sections)
-    with col3:
-        total_images = sum(
-            len(section.get('images', [])) 
-            for article in articles 
-            for section in article.get('sections', [])
-        )
-        st.metric("Total Images", total_images)
-
-    # Create a container for all sidebar elements to control their order
     with st.sidebar:
         # 1. Filters section
         st.subheader("⚙️ Filters")
@@ -143,14 +122,31 @@ def run_streamlit_app():
         )
 
         # Date range filter
-        dates = sorted(list(set(article.get('published_date') for article in articles if article.get('published_date'))))
-        date_range = None
+        dates = [
+            parse_date(article.get('published_date'))
+            for article in articles 
+            if article.get('published_date')
+        ]
+        dates = sorted([d for d in dates if d != datetime.min])  # Remove invalid dates and sort
+        
         if dates:
+            # Convert datetime objects to strings for display
+            date_strings = [d.strftime('%B %d, %Y') for d in dates]
             date_range = st.select_slider(
                 "Date Range",
-                options=dates,
-                value=(dates[0], dates[-1])
+                options=date_strings,
+                value=(date_strings[0], date_strings[-1])
             )
+            
+            # Convert selected strings back to datetime for filtering
+            start_date = datetime.strptime(date_range[0], '%B %d, %Y')
+            end_date = datetime.strptime(date_range[1], '%B %d, %Y')
+            
+            # Apply date filter
+            filtered_articles = [
+                article for article in filtered_articles 
+                if start_date <= parse_date(article.get('published_date', '')) <= end_date
+            ]
 
         # Author filter
         authors = sorted(list(set(article.get('author') for article in articles if article.get('author'))))
@@ -171,19 +167,11 @@ def run_streamlit_app():
             st.session_state.search_content = search_content
             st.rerun()
 
-        # Apply filters and search
-        filtered_articles = articles.copy()
-
         # Apply filters one by one
         if selected_authors:
             filtered_articles = [a for a in filtered_articles if a.get('author') in selected_authors]
-        if dates and date_range is not None and date_range != (dates[0], dates[-1]):
-            filtered_articles = [
-                a for a in filtered_articles 
-                if date_range[0] <= a.get('published_date', '') <= date_range[1]
-            ]
+        # Date filtering is handled earlier when date_range is defined
             
-
         # Improved search functionality for titles
         if search_title:
             filtered_articles = [
@@ -232,61 +220,27 @@ def run_streamlit_app():
         if st.button("Clear Filters"):
             st.rerun()
 
-        # 5. Article selection
+        # 5. Article selection (only the selection part stays in sidebar)
         st.markdown("---")
-        article_titles = [article.get('title', 'Untitled') for article in filtered_articles]
-        selected_indices = st.multiselect(
-            "Select articles to view:",
-            range(len(article_titles)),
-            format_func=lambda x: article_titles[x]
-        )
+        selected_indices = []  # Initialize as empty list
+        article_titles = []  # Initialize as empty list
+        if filtered_articles:
+            article_titles = [article.get('title', 'Untitled') for article in filtered_articles]
+            selected_indices = st.multiselect(
+                "Select articles to view:",
+                range(len(article_titles)),
+                format_func=lambda x: article_titles[x]
+            )
 
-    # Display selected articles in main area
-    if not selected_indices:
+    # Move article display outside sidebar (in main area)
+    if not filtered_articles:
+        st.warning("No articles match your current filters.")
+    elif not selected_indices:
         st.info("Please select one or more articles from the sidebar.")
     else:
+        # Display selected articles in main content area
         for idx in selected_indices:
             with st.expander(article_titles[idx], expanded=True):
                 display_article(filtered_articles[idx])
             st.markdown("---")
 
-# Update the page config
-if __name__ == "__main__":
-    st.set_page_config(
-        page_title="Google AI Articles Viewer",
-        page_icon="📚",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    # Enhanced styling
-    st.markdown("""
-        <style>
-        .sidebar .sidebar-content {
-            background-color: #f5f5f5;
-        }
-        .sidebar .stSelectbox {
-            margin-bottom: 20px;
-        }
-        .sidebar .stButton {
-            margin-top: 20px;
-        }
-        .metric-container {
-            background-color: #f8f9fa;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        }
-        .stAlert {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.5rem;
-        }
-        .stExpander {
-            border: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    run_streamlit_app()
