@@ -12,7 +12,13 @@ def count_new_articles():
     csv_path = './data/raw/google_ai_links.csv'
     try:
         df = pd.read_csv(csv_path)
-        return len(df[~df.get('checked', False)])
+        if 'checked' not in df.columns:
+            # If the column is missing, treat all rows as unchecked
+            return len(df)
+        
+        # Ensure boolean dtype and count entries that are not checked
+        unchecked = ~df['checked'].fillna(False).astype(bool)
+        return int(unchecked.sum())
     except Exception as e:
         logger.error(f"Error counting new articles: {e}")
         return 0
