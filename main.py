@@ -1,6 +1,7 @@
 from src.websites.google_ai_links_scraper import scrape_homepage
 from src.websites.google_ai_article_scraper import scrape_articles_from_links
 from src.image_downloader import batch_process_articles
+from src.summarizer import batch_process_articles as summarize_articles
 from src.utils.logger import setup_logger
 import streamlit as st
 import pandas as pd
@@ -35,49 +36,43 @@ def scrape_and_process():
                 status.write(message)
             
             # Step 1: Scrape homepage
-            status.write("### 📡 Step 1/3: Scraping Google AI homepage...")
+            status.write("### 📡 Step 1/4: Scraping Google AI homepage...")
             initial_links = scrape_homepage()
-            new_articles_count = count_new_articles()
-            progress_bar.progress(33)
+            progress_bar.progress(25)
             
-            # Step 2: Scrape articles with progress
-            status.write("### 📑 Step 2/3: Downloading article content...")
+            # Step 2: Scrape articles
+            status.write("### 📑 Step 2/4: Downloading article content...")
             processed_count = scrape_articles_from_links(update_progress)
+            progress_bar.progress(50)
             
-            progress_bar.progress(66)
-            st.write("Step 2 completed: Articles downloaded")
-            
-            # Step 3: Download images with accurate counting
-            status.write("### 🖼️ Step 3/3: Downloading images...")
+            # Step 3: Download images
+            status.write("### 🖼️ Step 3/4: Downloading images...")
             results = batch_process_articles()
+            progress_bar.progress(75)
             
-            actual_downloads = 0
-            skipped_images = 0
-            if results:
-                for result in results:
-                    if result:  # Check if result is not None
-                        actual_downloads += result.get('new_downloads', 0)
-                        skipped_images += result.get('skipped_images', 0)
-                
-                status.write(f"*Downloaded {actual_downloads} new images (Skipped {skipped_images} existing images)*")
-            
+            # Step 4: Generate summaries with Ollama
+            status.write("### 📝 Step 4/4: Generating summaries...")
+            summary_results = summarize_articles()
             progress_bar.progress(100)
             
             # Final summary
-            status.update(label="✅ Scraping completed!", state="complete")
-            progress_placeholder.empty()  # Clear the progress bar when done
+            status.update(
+                label=(f"✅ Done!"),
+                state="complete"
+            )
+            progress_placeholder.empty()
             
             return {
-                'new_articles': new_articles_count,
+                'new_articles': len(initial_links or []),
                 'processed_articles': processed_count,
-                'images_downloaded': actual_downloads,
-                'images_skipped': skipped_images
+                'images_downloaded': sum(r.get('new_downloads', 0) for r in results if r),
+                'summaries_generated': summary_results['processed']
             }
             
     except Exception as e:
         logger.error(f"Error in scraping process: {str(e)}", exc_info=True)
         st.error("❌ Error during scraping. Check logs for details.")
-        raise
+        return None
 
 def main():
     st.set_page_config(
@@ -95,9 +90,6 @@ def main():
                 if results:
                     st.success(
                         f"✨ Scraping completed successfully!\n\n"
-                        f"Found {results['new_articles']} new articles\n"
-                        f"Processed {results['processed_articles']} articles\n"
-                        f"Downloaded {results['images_downloaded']} images"
                     )
             except Exception as e:
                 st.error(f"Failed to complete scraping: {str(e)}")

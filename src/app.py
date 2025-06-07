@@ -108,12 +108,39 @@ def display_article(article):
         
         # Get and display all images for this section
         image_paths = get_local_image_path(article_index, section_idx + 1)
-        for img_path in image_paths:
-            try:
-                image = Image.open(img_path)
-                st.image(image, use_column_width=True)
-            except Exception as e:
-                st.error(f"Error loading image {img_path}: {e}")
+        if image_paths:
+            num_images = len(image_paths)
+            if num_images > 1:
+                cols = st.columns(min(num_images, 2))
+            
+            for idx, img_path in enumerate(image_paths):
+                try:
+                    image = Image.open(img_path)
+                    width, height = image.size
+                    max_width = 800
+                    if width > max_width:
+                        ratio = max_width / width
+                        new_size = (int(width * ratio), int(height * ratio))
+                        image = image.resize(new_size, Image.Resampling.LANCZOS)
+                    
+                    if num_images > 1:
+                        col_idx = idx % 2
+                        cols[col_idx].image( # type: ignore
+                            image, 
+                            use_container_width=True,  # Updated parameter
+                            output_format="PNG"
+                        )
+                    else:
+                        col1, col2, col3 = st.columns([1, 3, 1])
+                        with col2:
+                            st.image(
+                                image, 
+                                use_container_width=True,  # Updated parameter
+                                output_format="PNG"
+                            )
+                            
+                except Exception as e:
+                    st.error(f"Error loading image {img_path}: {e}")
         
         # Display paragraphs
         for paragraph in section.get('paragraphs', []):

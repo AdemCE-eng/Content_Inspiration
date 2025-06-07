@@ -95,36 +95,69 @@ class ArticleSummarizer:
             logger.error(f"Error processing article {article_path}: {str(e)}")
             return {}
 
-def batch_process_articles(articles_dir: str = './data/processed/google_articles') -> None:
-    """Process articles and add summaries to existing JSON files."""
+def needs_summarization(article):
+    """Check if article needs to be summarized."""
+    for section in article.get('sections', []):
+        for paragraph in section.get('paragraphs', []):
+            # If any paragraph is a string (not dict with summary), needs summarization
+            if isinstance(paragraph, str):
+                return True
+            # If any paragraph is missing a summary, needs summarization
+            if isinstance(paragraph, dict) and 'summary' not in paragraph:
+                return True
+    return False
+
+def batch_process_articles(articles_dir='./data/processed/google_articles'):
+    """Process articles and add summaries only to those that need it."""
     summarizer = ArticleSummarizer()
+    processed_count = 0
+    skipped_count = 0
     
-    article_files = [f for f in os.listdir(articles_dir) if f.endswith('.json')]
-    total_articles = len(article_files)
+    for filename in os.listdir(articles_dir):
+        if not filename.endswith('.json'):
+            continue
+            
+        file_path = os.path.join(articles_dir, filename)
+        
+        try:
+            # Read existing article
+            with open(file_path, 'r', encoding='utf-8') as f:
+                article = json.load(f)
+            
+            # Skip if already summarized
+            if not needs_summarization(article):
+                logger.info(f"Skipping already summarized article: {filename}")
+                skipped_count += 1
+                continue
+                
+            logger.info(f"Summarizing article: {filename}")
+            
+            # Process each section's paragraphs
+            for section in article.get('sections', []):
+                summarized_paragraphs = []
+                for paragraph in section.get('paragraphs', []):
+                    if isinstance(paragraph, str):
+                        summary = summarizer.summarize_paragraph(paragraph)
+                        summarized_paragraphs.append({
+                            'original': paragraph,
+                            'summary': summary
+                        })
+                    else:
+                        # Keep existing paragraph structure
+                        summarized_paragraphs.append(paragraph)
+                section['paragraphs'] = summarized_paragraphs
+            
+            # Save back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(article, f, indent=2, ensure_ascii=False)
+                
+            logger.info(f"Successfully summarized {filename}")
+            processed_count += 1
+            
+        except Exception as e:
+            logger.error(f"Error processing {filename}: {str(e)}")
     
-    logger.info(f"Starting summarization of {total_articles} articles")
-    
-    for idx, article_file in enumerate(article_files, 1):
-        article_path = os.path.join(articles_dir, article_file)
-        logger.info(f"Processing article {idx}/{total_articles}: {article_file}")
-        
-        # Load existing article
-        with open(article_path, 'r', encoding='utf-8') as f:
-            article = json.load(f)
-        
-        # Add summaries to existing sections
-        for section in article.get('sections', []):
-            summarized_paragraphs = []
-            for paragraph in section.get('paragraphs', []):
-                if paragraph.strip():
-                    summary = summarizer.summarize_paragraph(paragraph)
-                    summarized_paragraphs.append({
-                        'original': paragraph,
-                        'summary': summary
-                    })
-            section['paragraphs'] = summarized_paragraphs
-        
-        # Save back to same file
-        with open(article_path, 'w', encoding='utf-8') as f:
-            json.dump(article, f, indent=2, ensure_ascii=False)
-        logger.info(f"Updated article with summaries: {article_file}")
+    return {
+        'processed': processed_count,
+        'skipped': skipped_count
+    }
