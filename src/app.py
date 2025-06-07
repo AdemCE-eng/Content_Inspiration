@@ -126,7 +126,13 @@ def save_read_status(read_status):
 def run_streamlit_app():
     # Load articles and read status
     articles = load_articles()
-    filtered_articles = articles.copy()
+    
+    # Sort articles by date (newest first)
+    filtered_articles = sorted(
+        articles,
+        key=lambda x: parse_date(x.get('published_date', '')),
+        reverse=True  # Newest first
+    )
 
     # Initialize read status
     if 'read_articles' not in st.session_state:
@@ -149,12 +155,6 @@ def run_streamlit_app():
             # Filters section
             st.subheader("⚙️ Filters")
             
-            # Sort options
-            sort_method = st.selectbox(
-                "Sort by",
-                ["Date (Newest First)", "Date (Oldest First)", "Title (A-Z)", "Title (Z-A)"]
-            )
-
             # Date range filter
             dates = [
                 parse_date(article.get('published_date'))
@@ -225,7 +225,11 @@ def run_streamlit_app():
             st.info(f"Found {len(filtered_articles)} matching articles")
 
         # Main page content
-        st.title("📚 Articles")
+        st.markdown("""
+            <div style='display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;'>
+                <h1 style='margin: 0;'>📚Articles</h1>
+            </div>
+        """, unsafe_allow_html=True)
         
         # Create columns for the table header
         header_cols = st.columns([0.5, 0.2, 0.15, 0.15])
