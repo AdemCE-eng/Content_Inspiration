@@ -45,14 +45,26 @@ def update_download_status(article_url: str, status: bool):
         logger.error(f"Failed to update CSV status: {str(e)}")
 
 def check_if_downloaded(article_url: str) -> bool:
-    """Check if article images were already downloaded."""
+    """Check if article images were already downloaded and verify they exist."""
     try:
         df = pd.read_csv(CSV_FILE)
         if 'images_downloaded' not in df.columns:
+            df['images_downloaded'] = False
+            df.to_csv(CSV_FILE, index=False)
             return False
         
-        article_status = df.loc[df['url'] == article_url, 'images_downloaded'].iloc[0]
-        return bool(article_status)
+        # Get the article's row
+        article_row = df.loc[df['url'] == article_url]
+        if article_row.empty:
+            return False
+            
+        # Reset status to False if it's NaN
+        if pd.isna(article_row['images_downloaded'].iloc[0]):
+            df.loc[df['url'] == article_url, 'images_downloaded'] = False
+            df.to_csv(CSV_FILE, index=False)
+            return False
+            
+        return bool(article_row['images_downloaded'].iloc[0])
     except Exception as e:
         logger.error(f"Failed to check download status: {str(e)}")
         return False
@@ -105,16 +117,23 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
         with open(json_path, 'r', encoding='utf-8') as f:
             article_data = json.load(f)
             
-        # Check if images were already downloaded
         article_url = article_data.get('url')
-        if check_if_downloaded(article_url):
-            logger.info(f"Images already downloaded for {article_url}")
+        if not article_url:
+            logger.error(f"No URL found in {json_path}")
             return None
 
         # Create article directory
         article_index = os.path.basename(json_path).split('_')[0]
         article_dir = os.path.join(images_root, f"article_{article_index}")
-        os.makedirs(article_dir, exist_ok=True)
+        
+        # Force download if directory doesn't exist or is empty
+        if not os.path.exists(article_dir) or not os.listdir(article_dir):
+            update_download_status(article_url, False)  # Reset status to force download
+        
+        # Only skip if both status is True and images exist
+        if check_if_downloaded(article_url) and os.path.exists(article_dir) and os.listdir(article_dir):
+            logger.info(f"Images already downloaded for {article_url}")
+            return None
 
         # Process sections with images
         actual_downloads = 0

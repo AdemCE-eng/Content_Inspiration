@@ -21,17 +21,55 @@ def load_articles():
         st.error(f"Error loading articles: {str(e)}")
     return articles
 
-def get_local_image_path(article_index, section_id, image_index=1):
-    """Get the path to the locally saved image."""
-    # Ensure article_index is not empty
+def get_local_image_path(article_index, section_id):
+    """Get all image paths for a section."""
     if not article_index:
-        return None
+        return []
+    
+    base_path = os.path.join('images', f'article_{article_index.strip()}')
+    found_images = []
+    
+    # Expanded patterns to catch more image variations
+    base_patterns = [
+        # Standard patterns
+        f'image_{section_id}.jpg',
+        f'image_{section_id}.png',
+        f'image_{section_id}.jpeg',
+        # Number after section
+        f'image_{section_id}_1.jpg',
+        f'image_{section_id}_2.jpg',
+        f'image_{section_id}_3.jpg',
+        f'image_{section_id}_4.jpg',
+        # Number with dot separator
+        f'image_{section_id}.1.jpg',
+        f'image_{section_id}.2.jpg',
+        f'image_{section_id}.3.jpg',
+        f'image_{section_id}.4.jpg'
+    ]
+    
+    # Add PNG and JPEG variations
+    all_patterns = []
+    for pattern in base_patterns:
+        all_patterns.append(pattern)
+        all_patterns.append(pattern.replace('.jpg', '.png'))
+        all_patterns.append(pattern.replace('.jpg', '.jpeg'))
+    
+    # Check all patterns
+    for pattern in all_patterns:
+        path = os.path.join(base_path, pattern)
+        if os.path.exists(path):
+            found_images.append(path)
+            print(f"Found image: {path}")  # Debug print
         
-    return os.path.join(
-        'images', 
-        f'article_{article_index.strip()}',
-        f'image_{section_id}{"."+str(image_index) if image_index > 1 else ""}.jpg'
-    )
+    # Sort found images to ensure consistent order
+    found_images.sort()
+    
+    if not found_images:
+        print(f"No images found for article {article_index} section {section_id}")
+    else:
+        print(f"Found {len(found_images)} images for article {article_index} section {section_id}")
+    
+    return found_images
 from datetime import datetime
 
 def parse_date(date_str):
@@ -50,61 +88,39 @@ def parse_date(date_str):
         return datetime.min
     
 def display_article(article):
-    """Display a single article with its content."""
-    try:
-        # Get article index from the article data
-        article_path = article.get('_file_path', '')
-        if article_path:
-            article_index = os.path.basename(article_path).split('_')[0]
-        else:
-            # Fallback: try to get index from title
-            article_index = ''.join(filter(str.isdigit, article.get('title', '')))[:2]  # Take first 2 digits only
+    """Display an article with its summaries and images."""
+    st.title(article.get('title', ''))
+    
+    if article.get('published_date'):
+        st.caption(f"Published: {article['published_date']}")
+    
+    if article.get('url'):
+        st.markdown(f"[Original Article]({article['url']})")
+    
+    st.markdown("---")
+    
+    # Get article index from file path
+    article_index = article.get('_file_path', '').split('\\')[-1].split('_')[0]
+    
+    for section_idx, section in enumerate(article.get('sections', [])):
+        if section.get('section_title'):
+            st.subheader(section['section_title'])
         
-        if not article_index:
-            st.error("Could not determine article index")
-            return
-            
-    except Exception as e:
-        st.error(f"Error extracting article index: {str(e)}")
-        return
-
-    st.title(article.get('title', 'No Title'))
-    
-    # Display metadata if available
-    col1, col2 = st.columns(2)
-    with col1:
-        if article.get('published_date'):
-            st.text(f"Published: {article['published_date']}")
-    with col2:
-        if article.get('author'):
-            st.text(f"Author: {article['author']}")
-    
-    # Display sections
-    for section in article.get('sections', []):
-        # Use different heading styles based on section_level
-        if section.get('section_level', 2) == 2:
-            st.header(section.get('section_title', 'Untitled Section'))
-        else:
-            st.subheader(section.get('section_title', 'Untitled Section'))
+        # Get and display all images for this section
+        image_paths = get_local_image_path(article_index, section_idx + 1)
+        for img_path in image_paths:
+            try:
+                image = Image.open(img_path)
+                st.image(image, use_column_width=True)
+            except Exception as e:
+                st.error(f"Error loading image {img_path}: {e}")
         
         # Display paragraphs
         for paragraph in section.get('paragraphs', []):
-            st.write(paragraph)
-        
-        # Display images from local storage
-        if section.get('images'):
-            section_id = section.get('section_id')
-            cols = st.columns(min(len(section['images']), 3))
-            for idx, col in enumerate(cols, 1):
-                img_path = get_local_image_path(article_index, section_id, idx)
-                try:
-                    if img_path and os.path.exists(img_path):
-                        img = Image.open(img_path)
-                        col.image(img, caption=f"Image {idx}", use_column_width=True)
-                    else:
-                        col.warning(f"Image not found locally: {img_path}")
-                except Exception as e:
-                    col.error(f"Error loading image: {str(e)}")
+            if isinstance(paragraph, dict) and 'summary' in paragraph:
+                st.write(paragraph['summary'])
+            else:
+                st.write(paragraph)  # Fallback for non-summarized paragraphs
 
 def load_read_status():
     """Load the read status of articles from a JSON file."""
