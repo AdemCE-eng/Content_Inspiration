@@ -6,10 +6,12 @@ import glob
 from typing import Optional, Dict, List
 from src.utils.logger import setup_logger
 from dotenv import load_dotenv
+from src.utils.config import get_config
 
 # Setup module logger
 logger = setup_logger('image_downloader')
 
+config = get_config()
 CSV_FILE = './data/raw/google_ai_links.csv'
 
 # Load environment variables
@@ -80,7 +82,8 @@ def fetch_and_save_image(url: str, save_path: str) -> bool:
         bool: True if successful, False otherwise
     """
     try:
-        response = requests.get(url, headers=HEADERS, stream=True, timeout=10)
+        timeout = config.get('timeout', 30)
+        response = requests.get(url, headers=HEADERS, stream=True, timeout=timeout)
         response.raise_for_status()
         
         # Ensure directory exists
@@ -111,9 +114,11 @@ def image_exists(img_path: str) -> bool:
         logger.error(f"Error checking image {img_path}: {e}")
     return False
 
-def process_article_images(json_path: str, images_root: str = 'images') -> Optional[Dict]:
+def process_article_images(json_path: str, images_root: str | None = None) -> Optional[Dict]:
     """Process and download images from a single article JSON file."""
     try:
+        if images_root is None:
+            images_root = config.get('images_dir', 'images')
         with open(json_path, 'r', encoding='utf-8') as f:
             article_data = json.load(f)
             
@@ -124,7 +129,7 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
 
         # Create article directory
         article_index = os.path.basename(json_path).split('_')[0]
-        article_dir = os.path.join(images_root, f"article_{article_index}")
+        article_dir = os.path.join(images_root, f"article_{article_index}") # type: ignore
         
         # Force download if directory doesn't exist or is empty
         if not os.path.exists(article_dir) or not os.listdir(article_dir):
@@ -202,8 +207,8 @@ def process_article_images(json_path: str, images_root: str = 'images') -> Optio
         logger.error(f"Error processing article {json_path}: {str(e)}")
         return None
 
-def batch_process_articles(json_folder: str = './data/processed/google_articles',
-                         images_root: str = './images') -> List[Dict]:
+def batch_process_articles(json_folder: str | None = None,
+                         images_root: str | None = None) -> List[Dict]:
     """
     Process all article JSON files in the specified folder.
     
@@ -214,8 +219,12 @@ def batch_process_articles(json_folder: str = './data/processed/google_articles'
         List[Dict]: Results of all download operations
     """
     try:
-        os.makedirs(images_root, exist_ok=True)
-        json_files = glob.glob(os.path.join(json_folder, '*.json'))
+        if json_folder is None:
+            json_folder = config['data_dir']
+        if images_root is None:
+            images_root = config.get('images_dir', './images')
+        os.makedirs(images_root, exist_ok=True) # type: ignore
+        json_files = glob.glob(os.path.join(json_folder, '*.json')) # type: ignore
         
         if not json_files:
             logger.warning(f"No JSON files found in {json_folder}")

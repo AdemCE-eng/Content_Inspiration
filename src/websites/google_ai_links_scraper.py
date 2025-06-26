@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
-import yaml
+from src.utils.config import get_config
 import pandas as pd
 from src.utils.logger import setup_logger
 from dotenv import load_dotenv
@@ -27,10 +27,11 @@ HEADERS = {
 def load_base_url(url_index=0):
     """Load the base URL from the YAML config file."""
     try:
-        config_path = os.path.join("config", "config.yaml")
-        with open(config_path, 'r', encoding='utf-8') as file:
-            config = yaml.safe_load(file)
-        base_url = config.get('urls', [None])[url_index]
+        config = get_config()
+        sources = config.get('sources', [None])
+        if isinstance(sources, dict):
+            sources = list(sources.values())
+        base_url = sources[url_index] if len(sources) > url_index else None
         if not base_url:
             logger.error("No URL found in config file")
             return None
@@ -43,8 +44,10 @@ def load_base_url(url_index=0):
 def get_url(base_url):
     """Fetch the HTML content of the base URL."""
     try:
+        config = get_config()
+        timeout = config.get('timeout', 30)
         logger.info(f"Fetching URL: {base_url}")
-        response = requests.get(base_url, headers=HEADERS)
+        response = requests.get(base_url, headers=HEADERS, timeout=timeout)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         return soup

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from src.utils.logger import setup_logger
 from src.utils.rate_limiter import rate_limit
 from src.utils.retry import retry_on_failure
+from src.utils.config import get_config
 import glob
 
 # Load environment variables
@@ -15,6 +16,7 @@ env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__
 load_dotenv(env_path)
 
 logger = setup_logger('article_scraper')
+config = get_config()
 
 # Get User-Agent from environment variables with validation
 USER_AGENT = os.getenv("USER_AGENT")
@@ -28,14 +30,18 @@ HEADERS = {
     'Accept-Language': 'en-US,en;q=0.5',
 }
 
-CSV_FILE = os.path.join(os.path.dirname(__file__), '../../data/raw/google_ai_links.csv')
+CSV_FILE = os.path.join('.', 'data', 'raw', 'google_ai_links.csv')
+DATA_DIR = config['data_dir']
+REQUESTS_PER_SECOND = config.get('requests_per_second', 1)
+SECONDS_PER_REQUEST = 1 / REQUESTS_PER_SECOND if REQUESTS_PER_SECOND else 1
 
-@rate_limit(seconds_per_request=2)
-@retry_on_failure(max_retries=3)
+@rate_limit(seconds_per_request=SECONDS_PER_REQUEST)
+@retry_on_failure(max_retries=config.get('max_retries', 3))
 def get_url(url):
     """Fetch URL with rate limiting and retry logic."""
     try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
+        timeout = config.get('timeout', 30)
+        response = requests.get(url, headers=HEADERS, timeout=timeout)
         response.raise_for_status()
         return BeautifulSoup(response.content, 'html.parser')
     except Exception as e:
@@ -116,7 +122,7 @@ def save_article(article_data, idx):
     """Save the scraped article data to a JSON file."""
     try:
         # Get highest existing index
-        output_dir = os.path.join('.', 'data', 'processed', 'google_articles')
+        output_dir = DATA_DIR
         os.makedirs(output_dir, exist_ok=True)
         
         existing_files = glob.glob(os.path.join(output_dir, "*.json"))
@@ -188,3 +194,7 @@ def scrape_articles_from_links(progress_callback=None):
     except Exception as e:
         logger.error(f"Fatal error in article scraping: {e}")
         return 0
+    
+if __name__ == "__main__":
+    # Example usage
+    url = get_url

@@ -107,9 +107,11 @@ content-inspiration/
 
 The application uses `config/config.yaml` for configuration. Key settings include:
 
-- **Source URLs**: Define which blogs to scrape
-- **Model Settings**: Configure Ollama model preferences
-- **Storage Paths**: Customize data and image storage locations
+- **Data Storage**: Paths for processed articles, images and logs
+- **Sources**: URLs to scrape (e.g. `google_ai_blog`)
+- **Request Settings**: Timeout, retries and rate limiting
+- **Ollama Model**: Base URL, model name and timeout
+- **UI Settings**: Pagination and summary length
 
 ## 🔧 Troubleshooting
 

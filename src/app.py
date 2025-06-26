@@ -4,10 +4,13 @@ import os
 from PIL import Image
 from datetime import datetime
 import os
+from src.utils.config import get_config
+
+config = get_config()
 
 def load_articles():
     """Load all article JSON files."""
-    articles_dir = './data/processed/google_articles'
+    articles_dir = config['data_dir']
     articles = []
     try:
         for filename in os.listdir(articles_dir):
@@ -26,7 +29,7 @@ def get_local_image_path(article_index, section_id):
     if not article_index:
         return []
     
-    base_path = os.path.join('images', f'article_{article_index.strip()}')
+    base_path = os.path.join(config.get('images_dir', 'images'), f'article_{article_index.strip()}')
     found_images = []
     
     # Expanded patterns to catch more image variations
@@ -152,7 +155,7 @@ def display_article(article):
 def load_read_status():
     """Load the read status of articles from a JSON file."""
     try:
-        status_path = os.path.join('data', 'processed', 'read_status.json')
+        status_path = os.path.join(os.path.dirname(config['data_dir']), 'read_status.json')
         with open(status_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
@@ -160,7 +163,7 @@ def load_read_status():
 
 def save_read_status(read_status):
     """Save the read status of articles to a JSON file."""
-    status_dir = os.path.join('data', 'processed')
+    status_dir = os.path.dirname(config['data_dir'])
     os.makedirs(status_dir, exist_ok=True)
     status_path = os.path.join(status_dir, 'read_status.json')
     with open(status_path, 'w') as f:

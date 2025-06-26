@@ -1,3 +1,28 @@
-urls:
-  - https://research.google/blog/
-  - https://blogs.nvidia.com/blog/category/generative-ai/
+# Content Inspiration Configuration
+
+# Data Storage
+data_dir: "data/processed/google_articles"
+images_dir: "images"
+logs_dir: "logs"
+
+# Web Scraping
+sources:
+  google_ai_blog: "https://research.google/blog/"
+
+# Request Settings
+timeout: 30
+max_retries: 3
+requests_per_second: 2
+
+# AI Model
+ollama:
+  base_url: "http://localhost:11434"
+  model: "mistral"
+  timeout: 60
+
+# Logging
+log_level: "INFO"
+
+# UI Settings
+articles_per_page: 10
+max_summary_length: 300

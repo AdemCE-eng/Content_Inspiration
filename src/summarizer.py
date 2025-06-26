@@ -3,17 +3,25 @@ import os
 from typing import Dict
 import requests
 from src.utils.logger import setup_logger
+from src.utils.config import get_config
 
 logger = setup_logger('summarizer')
+config = get_config()
 
 class ArticleSummarizer:
-    def __init__(self, model="mistral"):
-        self.model = model
-        self.api_url = "http://localhost:11434/api/generate"
+    def __init__(self, model: str | None = None):
+        self.model = model or config.get('ollama', {}).get('model', 'mistral')
+        base_url = config.get('ollama', {}).get('base_url', 'http://localhost:11434')
+        self.timeout = config.get('ollama', {}).get('timeout', 60)
+        self.api_url = f"{base_url.rstrip('/')}/api/generate"
         
         # Test connection and provide clear error message
         try:
-            response = requests.post(self.api_url, json={"model": self.model, "prompt": "test"})
+            response = requests.post(
+                self.api_url,
+                json={"model": self.model, "prompt": "test"},
+                timeout=self.timeout,
+            )
             response.raise_for_status()
             logger.info(f"Successfully connected to Ollama using {self.model} model")
         except requests.exceptions.ConnectionError:
@@ -46,7 +54,8 @@ class ArticleSummarizer:
                     "model": self.model,
                     "prompt": prompt,
                     "stream": False
-                }
+                },
+                timeout=self.timeout,
             )
             response.raise_for_status()
             return response.json()['response'].strip()
@@ -107,8 +116,10 @@ def needs_summarization(article):
                 return True
     return False
 
-def batch_process_articles(articles_dir='./data/processed/google_articles'):
+def batch_process_articles(articles_dir: str | None = None):
     """Process articles and add summaries only to those that need it."""
+    if articles_dir is None:
+        articles_dir = config['data_dir']
     summarizer = ArticleSummarizer()
     processed_count = 0
     skipped_count = 0
@@ -117,7 +128,7 @@ def batch_process_articles(articles_dir='./data/processed/google_articles'):
         if not filename.endswith('.json'):
             continue
             
-        file_path = os.path.join(articles_dir, filename)
+        file_path = os.path.join(articles_dir, filename) # type: ignore
         
         try:
             # Read existing article
