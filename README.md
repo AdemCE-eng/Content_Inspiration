@@ -52,7 +52,7 @@ A Streamlit-powered web application that intelligently scrapes and summarizes ar
 
 5. **Configure Ollama**
    
-   The application attempts to start `ollama serve` automatically when summaries are generated.
+   The application automatically launches `ollama serve` when summaries are generated and terminates the process when summarization completes. On Windows, any lingering child processes are forcibly killed.   
    Make sure the `ollama` CLI is installed and pull the required model:
    ```bash
    ollama pull mistral  # or your preferred model

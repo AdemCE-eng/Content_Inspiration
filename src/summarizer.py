@@ -56,10 +56,14 @@ class ArticleSummarizer:
 
     def _start_server(self) -> bool:
         try:
+            creationflags = 0
+            if os.name == "nt":
+                creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
             self.server_process = subprocess.Popen(
                 ["ollama", "serve"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                creationflags=creationflags,
             )
             return True
         except FileNotFoundError:
@@ -75,6 +79,23 @@ class ArticleSummarizer:
                 return True
             time.sleep(delay)
         return False
+    
+    def stop_server(self):
+        """Terminate Ollama server if started."""
+        if self.server_process and self.server_process.poll() is None:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(self.server_process.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                self.server_process.terminate()
+            try:
+                self.server_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.server_process.kill()
+        self.server_process = None
 
     def summarize_paragraph(self, paragraph: str) -> str:
         """Generate a summary for a single paragraph using local Ollama model."""
@@ -197,7 +218,8 @@ def batch_process_articles(articles_dir: str | None = None):
             
         except Exception as e:
             logger.error(f"Error processing {filename}: {str(e)}")
-    
+            
+    summarizer.stop_server()
     return {
         'processed': processed_count,
         'skipped': skipped_count
