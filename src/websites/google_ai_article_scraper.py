@@ -37,6 +37,7 @@ SECONDS_PER_REQUEST = 1 / REQUESTS_PER_SECOND if REQUESTS_PER_SECOND else 1
 
 @rate_limit(seconds_per_request=SECONDS_PER_REQUEST)
 @retry_on_failure(max_retries=config.get('max_retries', 3))
+
 def get_url(url):
     """Fetch URL with rate limiting and retry logic."""
     try:
@@ -63,11 +64,14 @@ def scrape_data(soup, url):
     }
 
     sections = []
-    section_counter = 0
-    current_section = None
-    pending_paragraphs: list[str] = []
-    pending_images: list[str] = []
-    
+    section_counter = 1
+    current_section = {
+        "section_id": section_counter,
+        "section_title": "Introduction",
+        "paragraphs": [],
+        "images": []
+    }
+
     article_body = soup.find("div", class_="blog-detail-wrapper") if soup else None
     if not article_body:
         logger.warning(f"No article body found for {url}.")
@@ -79,51 +83,33 @@ def scrape_data(soup, url):
     # Find all h2, h3, p, and img tags
     for elem in article_body.find_all(["h2", "h3", "p", "img"], recursive=True):
         if elem.name in ["h2", "h3"]:
-            # Finalize previous section with pending content
-            if current_section:
-                current_section["paragraphs"].extend(pending_paragraphs)
-                current_section["images"].extend(pending_images)
-                if current_section["paragraphs"] or current_section["images"]:
-                    sections.append(current_section)
-            pending_paragraphs = []
-            pending_images = []
-
+            if current_section["paragraphs"] or current_section["images"]:
+                sections.append(current_section)
             section_counter += 1
             current_section = {
                 "section_id": section_counter,
                 "section_title": elem.text.strip(),
-                "section_level": 2 if elem.name == "h2" else 3,
+                "section_level": 2 if elem.name == "h2" else 3,  # Track heading level
                 "paragraphs": [],
                 "images": []
             }
         elif elem.name == "p":
-            pending_paragraphs.append(elem.text.strip())
+            current_section["paragraphs"].append(elem.text.strip())
             # Check for images inside paragraphs too
             for img in elem.find_all("img"):
                 img_url = img.get("src")
                 if img_url:
                     logger.debug(f"Found image in paragraph: {img_url}")
-                    pending_images.append(img_url)
+                    current_section["images"].append(img_url)
         elif elem.name == "img":
             img_url = elem.get("src")
             if img_url:
                 logger.debug(f"Found standalone image: {img_url}")
+                current_section["images"].append(img_url)
 
-    # Append the final section
-    if current_section:
-        current_section["paragraphs"].extend(pending_paragraphs)
-        current_section["images"].extend(pending_images)
-        if current_section["paragraphs"] or current_section["images"]:
-            sections.append(current_section)
-    elif pending_paragraphs or pending_images:
-        # Handle case with no headings in article
-        section_counter += 1
-        sections.append({
-            "section_id": section_counter,
-            "section_title": "Introduction",
-            "paragraphs": pending_paragraphs,
-            "images": pending_images,
-        })
+    # Don't forget the last section
+    if current_section["paragraphs"] or current_section["images"]:
+        sections.append(current_section)
 
     # Debug print for sections with images
     for section in sections:
@@ -139,7 +125,7 @@ def save_article(article_data, idx):
         # Get highest existing index
         output_dir = DATA_DIR
         os.makedirs(output_dir, exist_ok=True)
-        
+
         existing_files = glob.glob(os.path.join(output_dir, "*.json"))
         max_index = -1
         for f in existing_files:
@@ -148,25 +134,25 @@ def save_article(article_data, idx):
                 max_index = max(max_index, file_index)
             except ValueError:
                 continue
-        
+
         # Create new index
         new_index = max_index + 1
-        
+
         # Create safe filename
         safe_title = "".join(
             c if c.isalnum() or c in (' ', '-', '_') else '_' 
             for c in article_data['title']
         )[:50]
-        
+
         # Save with new index
         output_path = os.path.join(output_dir, f"{new_index}_{safe_title}.json")
-        
+
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(article_data, f, ensure_ascii=False, indent=2)
         logger.info(f"Successfully saved article: {safe_title} with index {new_index}")
-        
+
         return new_index
-        
+
     except Exception as e:
         logger.error(f"Error saving article {idx}: {e}", exc_info=True)
         return None
@@ -179,7 +165,7 @@ def scrape_articles_from_links(progress_callback=None):
         to_process = df[~df.get('checked', False)]
         total_articles = len(to_process)
         processed = 0
-        
+
         if total_articles == 0:
             logger.info("No new articles to process")
             return 0
@@ -189,23 +175,23 @@ def scrape_articles_from_links(progress_callback=None):
                 if progress_callback:
                     progress = processed / total_articles
                     progress_callback(progress, f"Processing article {processed + 1}/{total_articles}")
-                
+
                 url = row['url']
                 if soup := get_url(url):
                     article_data = scrape_data(soup, url)
                     save_article(article_data, idx)
                     df.at[idx, 'checked'] = True
                     processed += 1
-                    
+
                     # Save progress after each article
                     df.to_csv(CSV_FILE, index=False)
-                
+
             except Exception as e:
                 logger.error(f"Error processing article {idx}: {e}")
                 continue
-        
+
         return processed
-        
+
     except Exception as e:
         logger.error(f"Fatal error in article scraping: {e}")
         return 0
