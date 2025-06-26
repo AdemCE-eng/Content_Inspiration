@@ -291,7 +291,7 @@ See the [LICENSE](LICENSE) file for full details
 ---
 
 <div align="center">
-<sub>Built with ❤️ and powered by ☕</sub>
+<sub>Built with ❤️ and lots of ☕</sub>
 
 <br><br>
 
