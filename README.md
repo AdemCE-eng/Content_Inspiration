@@ -22,7 +22,7 @@ A Streamlit-powered web application that intelligently scrapes and summarizes ar
 1. **Clone the repository**
    ```bash
    git clone https://github.com/AdemCE-eng/Content_Inspiration.git
-   cd content-inspiration
+   cd content_inspiration
    ```
 
 2. **Create and activate virtual environment**
