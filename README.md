@@ -52,7 +52,8 @@ A Streamlit-powered web application that intelligently scrapes and summarizes ar
 
 5. **Configure Ollama**
    
-   Ensure Ollama is running and pull the required model:
+   The application attempts to start `ollama serve` automatically when summaries are generated.
+   Make sure the `ollama` CLI is installed and pull the required model:
    ```bash
    ollama pull mistral  # or your preferred model
    ```
@@ -123,7 +124,7 @@ use another model, open `config/config.yaml` and change the value of
 
 **Common Issues:**
 
-- **Ollama Connection Error**: Ensure Ollama is running (`ollama serve`)
+- **Ollama Connection Error**: The app tries to start `ollama serve` automatically. Ensure the `ollama` CLI is installed and accessible.
 - **User Agent Issues**: Verify your `.env` file contains a valid user agent string
 - **Permission Errors**: Check write permissions for `data/` and `images/` directories
 - **Missing Dependencies**: Run `pip install -r requirements.txt` to ensure all packages are installed

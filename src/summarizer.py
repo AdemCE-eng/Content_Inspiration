@@ -4,6 +4,8 @@ from typing import Dict
 import requests
 from src.utils.logger import setup_logger
 from src.utils.config import get_config
+import subprocess
+import time
 
 logger = setup_logger('summarizer')
 config = get_config()
@@ -15,7 +17,23 @@ class ArticleSummarizer:
         self.timeout = config.get('ollama', {}).get('timeout', 60)
         self.api_url = f"{base_url.rstrip('/')}/api/generate"
         
-        # Test connection and provide clear error message
+        self.server_process = None
+
+        if not self._test_connection():
+            logger.info("Ollama server not running. Attempting to start it...")
+            if self._start_server() and self._wait_for_server():
+                logger.info("Ollama server started successfully")
+            else:
+                error_msg = (
+                    "Could not connect to Ollama. Please ensure:\n"
+                    "1. Ollama is installed (https://ollama.ai)\n"
+                    "2. Ollama service is running (run 'ollama serve' in terminal)\n"
+                    "3. The required model is pulled (run 'ollama pull mistral')"
+                )
+                logger.error(error_msg)
+                raise ConnectionError(error_msg)
+
+    def _test_connection(self) -> bool:
         try:
             response = requests.post(
                 self.api_url,
@@ -23,16 +41,7 @@ class ArticleSummarizer:
                 timeout=self.timeout,
             )
             response.raise_for_status()
-            logger.info(f"Successfully connected to Ollama using {self.model} model")
-        except requests.exceptions.ConnectionError:
-            error_msg = (
-                "Could not connect to Ollama. Please ensure:\n"
-                "1. Ollama is installed (https://ollama.ai)\n"
-                "2. Ollama service is running (run 'ollama serve' in terminal)\n"
-                "3. Mistral model is pulled (run 'ollama pull mistral')"
-            )
-            logger.error(error_msg)
-            raise ConnectionError(error_msg)
+            return True
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 error_msg = (
@@ -41,7 +50,31 @@ class ArticleSummarizer:
                 )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
-            raise
+            return False
+        except Exception:
+            return False
+
+    def _start_server(self) -> bool:
+        try:
+            self.server_process = subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except FileNotFoundError:
+            logger.error("Ollama executable not found. Is it installed and on your PATH?")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to start Ollama server: {e}")
+            return False
+
+    def _wait_for_server(self, retries: int = 10, delay: float = 1.0) -> bool:
+        for _ in range(retries):
+            if self._test_connection():
+                return True
+            time.sleep(delay)
+        return False
 
     def summarize_paragraph(self, paragraph: str) -> str:
         """Generate a summary for a single paragraph using local Ollama model."""
