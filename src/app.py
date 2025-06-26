@@ -276,8 +276,6 @@ def run_streamlit_app():
         if not isinstance(articles_per_page, int) or articles_per_page <= 0:
             st.warning("Invalid articles_per_page in config; using default of 10.")
             articles_per_page = 10
-        else:
-            st.caption(f"Using articles_per_page={articles_per_page} from config")
 
         total_pages = max((len(filtered_articles) - 1) // articles_per_page + 1, 1)
         if 'current_page' not in st.session_state:
