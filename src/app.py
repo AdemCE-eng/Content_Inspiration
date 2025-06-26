@@ -95,7 +95,7 @@ def display_article(article):
     st.title(article.get('title', ''))
     
     if article.get('published_date'):
-        st.caption(f"Published: {article['published_date']}")
+        st.caption(f"{article['published_date']} - {article['author']}")
     
     if article.get('url'):
         st.markdown(f"[Original Article]({article['url']})")

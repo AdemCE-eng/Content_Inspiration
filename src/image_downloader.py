@@ -240,7 +240,7 @@ def batch_process_articles(json_folder: str | None = None,
                 results.append(result)
                 logger.info(f"Successfully processed {json_file}")
             else:
-                logger.warning(f"Failed to process {json_file}")
+                logger.info(f"Skipped processing {json_file}")
 
         logger.info(f"Completed processing {len(results)}/{len(json_files)} articles")
         return results
