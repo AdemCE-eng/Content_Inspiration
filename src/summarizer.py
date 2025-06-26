@@ -18,8 +18,13 @@ class ArticleSummarizer:
         self.api_url = f"{base_url.rstrip('/')}/api/generate"
         
         self.server_process = None
+        self.started_server = False
+        self.server_running_before = False
 
-        if not self._test_connection():
+        if self._test_connection():
+            logger.info("Connected to existing Ollama server")
+            self.server_running_before = True
+        else:
             logger.info("Ollama server not running. Attempting to start it...")
             if self._start_server() and self._wait_for_server():
                 logger.info("Ollama server started successfully")
@@ -81,7 +86,7 @@ class ArticleSummarizer:
         return False
     
     def stop_server(self):
-        """Terminate Ollama server if started."""
+        """Terminate Ollama server regardless of who started it."""
         if self.server_process and self.server_process.poll() is None:
             if os.name == "nt":
                 subprocess.run(
@@ -95,7 +100,22 @@ class ArticleSummarizer:
                 self.server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.server_process.kill()
+        elif self.server_running_before:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", "ollama.exe"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                subprocess.run(
+                    ["pkill", "-f", "ollama"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
         self.server_process = None
+        self.started_server = False
+        self.server_running_before = False
 
     def summarize_paragraph(self, paragraph: str) -> str:
         """Generate a summary for a single paragraph using local Ollama model."""
