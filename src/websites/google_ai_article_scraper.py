@@ -63,14 +63,11 @@ def scrape_data(soup, url):
     }
 
     sections = []
-    section_counter = 1
-    current_section = {
-        "section_id": section_counter,
-        "section_title": "Introduction",
-        "paragraphs": [],
-        "images": []
-    }
-
+    section_counter = 0
+    current_section = None
+    pending_paragraphs: list[str] = []
+    pending_images: list[str] = []
+    
     article_body = soup.find("div", class_="blog-detail-wrapper") if soup else None
     if not article_body:
         logger.warning(f"No article body found for {url}.")
@@ -82,8 +79,15 @@ def scrape_data(soup, url):
     # Find all h2, h3, p, and img tags
     for elem in article_body.find_all(["h2", "h3", "p", "img"], recursive=True):
         if elem.name in ["h2", "h3"]:
-            if current_section["paragraphs"] or current_section["images"]:
-                sections.append(current_section)
+            # Finalize previous section with pending content
+            if current_section:
+                current_section["paragraphs"].extend(pending_paragraphs)
+                current_section["images"].extend(pending_images)
+                if current_section["paragraphs"] or current_section["images"]:
+                    sections.append(current_section)
+            pending_paragraphs = []
+            pending_images = []
+
             section_counter += 1
             current_section = {
                 "section_id": section_counter,
@@ -93,21 +97,33 @@ def scrape_data(soup, url):
                 "images": []
             }
         elif elem.name == "p":
-            current_section["paragraphs"].append(elem.text.strip())
+            pending_paragraphs.append(elem.text.strip())
             # Check for images inside paragraphs too
             for img in elem.find_all("img"):
                 img_url = img.get("src")
                 if img_url:
                     logger.debug(f"Found image in paragraph: {img_url}")
-                    current_section["images"].append(img_url)
+                    pending_images.append(img_url)
         elif elem.name == "img":
             img_url = elem.get("src")
             if img_url:
                 logger.debug(f"Found standalone image: {img_url}")
-                current_section["images"].append(img_url)
 
-    if current_section["paragraphs"] or current_section["images"]:
-        sections.append(current_section)
+    # Append the final section
+    if current_section:
+        current_section["paragraphs"].extend(pending_paragraphs)
+        current_section["images"].extend(pending_images)
+        if current_section["paragraphs"] or current_section["images"]:
+            sections.append(current_section)
+    elif pending_paragraphs or pending_images:
+        # Handle case with no headings in article
+        section_counter += 1
+        sections.append({
+            "section_id": section_counter,
+            "section_title": "Introduction",
+            "paragraphs": pending_paragraphs,
+            "images": pending_images,
+        })
 
     # Debug print for sections with images
     for section in sections:
