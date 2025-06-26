@@ -4,7 +4,7 @@ from functools import wraps
 def rate_limit(seconds_per_request=1):
     """Rate limiting decorator"""
     def decorator(func):
-        last_called = [0.0]  # Using list for mutable state
+        last_called = [0.0]
         
         @wraps(func)
         def wrapper(*args, **kwargs):

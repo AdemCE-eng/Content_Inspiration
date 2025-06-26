@@ -88,7 +88,7 @@ def scrape_data(soup, url):
             current_section = {
                 "section_id": section_counter,
                 "section_title": elem.text.strip(),
-                "section_level": 2 if elem.name == "h2" else 3,  # Track heading level
+                "section_level": 2 if elem.name == "h2" else 3,
                 "paragraphs": [],
                 "images": []
             }
@@ -106,7 +106,6 @@ def scrape_data(soup, url):
                 logger.debug(f"Found standalone image: {img_url}")
                 current_section["images"].append(img_url)
 
-    # Don't forget the last section
     if current_section["paragraphs"] or current_section["images"]:
         sections.append(current_section)
 

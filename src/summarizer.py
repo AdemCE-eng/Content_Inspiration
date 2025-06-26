@@ -108,10 +108,8 @@ def needs_summarization(article):
     """Check if article needs to be summarized."""
     for section in article.get('sections', []):
         for paragraph in section.get('paragraphs', []):
-            # If any paragraph is a string (not dict with summary), needs summarization
             if isinstance(paragraph, str):
                 return True
-            # If any paragraph is missing a summary, needs summarization
             if isinstance(paragraph, dict) and 'summary' not in paragraph:
                 return True
     return False
@@ -131,7 +129,6 @@ def batch_process_articles(articles_dir: str | None = None):
         file_path = os.path.join(articles_dir, filename) # type: ignore
         
         try:
-            # Read existing article
             with open(file_path, 'r', encoding='utf-8') as f:
                 article = json.load(f)
             

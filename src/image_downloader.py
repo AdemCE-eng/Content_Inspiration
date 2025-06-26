@@ -133,7 +133,7 @@ def process_article_images(json_path: str, images_root: str | None = None) -> Op
         
         # Force download if directory doesn't exist or is empty
         if not os.path.exists(article_dir) or not os.listdir(article_dir):
-            update_download_status(article_url, False)  # Reset status to force download
+            update_download_status(article_url, False)
         
         # Only skip if both status is True and images exist
         if check_if_downloaded(article_url) and os.path.exists(article_dir) and os.listdir(article_dir):

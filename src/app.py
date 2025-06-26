@@ -62,7 +62,7 @@ def get_local_image_path(article_index, section_id):
         path = os.path.join(base_path, pattern)
         if os.path.exists(path):
             found_images.append(path)
-            print(f"Found image: {path}")  # Debug print
+            print(f"Found image: {path}")
         
     # Sort found images to ensure consistent order
     found_images.sort()
@@ -131,7 +131,7 @@ def display_article(article):
                         col_idx = idx % 2
                         cols[col_idx].image( # type: ignore
                             image, 
-                            use_container_width=True,  # Updated parameter
+                            use_container_width=True,
                             output_format="PNG"
                         )
                     else:
@@ -139,7 +139,7 @@ def display_article(article):
                         with col2:
                             st.image(
                                 image, 
-                                use_container_width=True,  # Updated parameter
+                                use_container_width=True,
                                 output_format="PNG"
                             )
                             
@@ -151,7 +151,7 @@ def display_article(article):
             if isinstance(paragraph, dict) and 'summary' in paragraph:
                 st.write(paragraph['summary'])
             else:
-                st.write(paragraph)  # Fallback for non-summarized paragraphs
+                st.write(paragraph)
 
 def load_read_status():
     """Load the read status of articles from a JSON file."""
