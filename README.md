@@ -1,150 +1,302 @@
-# Content Inspiration
+# 🌟 Content Inspiration
 
-A Streamlit-powered web application that intelligently scrapes and summarizes articles from the Google AI Blog, complete with image downloads and AI-generated summaries for enhanced content discovery.
+> *A powerful Streamlit web application that intelligently scrapes and summarizes articles from the Google AI Blog, featuring automated content processing, image management, and AI-powered insights.*
 
-## 🚀 Features
+<div align="center">
 
-- **Smart Article Collection**: Automatically scrapes article links from Google AI Blog homepage
-- **Content Processing**: Downloads and processes article content with structured storage
-- **Image Management**: Retrieves and organizes all images referenced in articles
-- **AI-Powered Summaries**: Generates concise paragraph summaries using local Ollama models
-- **Interactive Web Interface**: Browse, search, and filter content through an intuitive Streamlit dashboard
-- **Configurable Setup**: Easy configuration through YAML files
+[![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Ollama](https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.ai)
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-## 📋 Prerequisites
+</div>
 
-- **Python**: Version 3.10 or newer
-- **Ollama**: A running [Ollama](https://ollama.ai/) instance with your preferred model
-- **Environment Variables**: User agent configuration for web scraping
+---
 
-## 🛠️ Installation
+## ✨ Key Features
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AdemCE-eng/Content_Inspiration.git
-   cd content_inspiration
-   ```
+<div align="center">
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<img src="https://img.icons8.com/fluency/48/000000/search.png" alt="Smart Collection"/>
+<h3>Smart Collection</h3>
+<p>Automatically discovers and extracts article links from Google AI Blog with intelligent parsing</p>
+</td>
+<td align="center" width="33%" valign="top">
+<img src="https://img.icons8.com/fluency/48/000000/artificial-intelligence.png" alt="AI Processing"/>
+<h3>AI-Powered Processing</h3>
+<p>Generates comprehensive summaries using local Ollama models for enhanced content understanding</p>
+</td>
+<td align="center" width="33%" valign="top">
+<img src="https://img.icons8.com/fluency/48/000000/dashboard.png" alt="Interactive Dashboard"/>
+<h3>Interactive Dashboard</h3>
+<p>Browse, search, and filter content through an intuitive Streamlit interface</p>
+</td>
+</tr>
+</table>
+</div>
 
-2. **Create and activate virtual environment**
-   ```bash
-   python -m venv venv
-   
-   # On Windows:
-   venv\Scripts\activate
-   
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
+### 🚀 Core Capabilities
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+- **📄 Content Processing** → Downloads and structures article content with metadata
+- **🖼️ Image Management** → Automatically retrieves and organizes article images
+- **⚙️ Flexible Configuration** → Easy setup through YAML configuration files
+- **🔍 Advanced Search** → Powerful filtering and discovery tools
+- **📊 Content Analytics** → Insights into your scraped content library
 
-4. **Set up environment variables**
-   
-   Create a `.env` file in the project root:
-   ```env
-   USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-   ```
-   
-   > **Note**: Replace with your actual browser's user agent string. You can find this by searching "what is my user agent" in your browser.
+---
 
-5. **Configure Ollama**
-   
-   The application automatically launches `ollama serve` when summaries are generated and terminates the process when summarization completes. On Windows, any lingering child processes are forcibly killed.   
-   Make sure the `ollama` CLI is installed and pull the required model:
-   ```bash
-   ollama pull mistral  # or your preferred model
-   ```
+## 🏗️ Project Architecture
 
-## 🚀 Usage
+```
+content-inspiration/
+│
+├── 📋 config/
+│   └── config.yaml              # Application configuration
+│
+├── 📁 data/
+│   ├── processed/               # Processed article storage
+│   └── raw/                     # Raw scraped links
+│
+├── 🖼️ images/                   # Downloaded article images
+│
+├── 📝 logs/                     # Application logs
+│
+├── 🔧 src/
+│   ├── utils/                   # Core utility modules
+│   └── websites/                # Scraping logic & main app
+│
+├── 🚀 main.py                   # Streamlit application entry point
+├── 📋 requirements.txt          # Python dependencies
+└── 🏃‍♂️ run_app.bat              # Windows launch script
+```
 
-### Starting the Application
+---
 
-**Option 1: Command Line**
+## 🛠️ Installation Guide
+
+### Prerequisites
+
+<div align="center">
+
+| Component | Requirement | Installation |
+|-----------|-------------|--------------|
+| 🐍 **Python** | 3.10+ | [Download Here](https://python.org) |
+| 🦙 **Ollama** | Latest | [Install Guide](https://ollama.ai/) |
+| 🌐 **Environment** | Variables | Configuration needed |
+
+</div>
+
+### Quick Setup
+
+#### **1️⃣ Clone Repository**
+```bash
+git clone https://github.com/AdemCE-eng/Content_Inspiration.git
+cd content_inspiration
+```
+
+#### **2️⃣ Environment Setup**
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate environment
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+```
+
+#### **3️⃣ Install Dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+#### **4️⃣ Configure Environment**
+Create `.env` file in project root:
+```env
+USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+```
+
+#### **5️⃣ Setup Ollama**
+```bash
+# Install required model
+ollama pull mistral
+
+# Service starts automatically when needed
+```
+
+---
+
+## 🎯 Usage Instructions
+
+### Launch Application
+
+<div align="center">
+<table>
+<tr>
+<td width="48%" align="center">
+
+**🖥️ Command Line**
 ```bash
 streamlit run main.py
 ```
 
-**Option 2: Windows Batch File**
+</td>
+<td width="4%">
+</td>
+<td width="48%" align="center">
+
+**🪟 Windows Batch**
 ```bash
 run_app.bat
 ```
-This automatically activates the virtual environment before launching Streamlit.
 
-### Using the Application
+</td>
+</tr>
+</table>
+</div>
 
-1. **Launch**: Open your browser to the Streamlit interface (typically `http://localhost:8501`)
+#### **📋 Step-by-Step Process**
 
-2. **Content Pipeline**: Use the sidebar to trigger the four-step scraping process:
-   - 📄 **Step 1**: Scrape article links from Google AI Blog
-   - 💾 **Step 2**: Download article content and metadata
-   - 🖼️ **Step 3**: Download and organize referenced images
-   - 🤖 **Step 4**: Generate AI summaries for each paragraph
+1. **🌐 Access Interface** → Navigate to `http://localhost:8501`
+2. **⚡ Run Pipeline** → Execute 4-step scraping process via sidebar
+   - **Step 1** → Scrape article links from Google AI Blog
+   - **Step 2** → Download article content and metadata
+   - **Step 3** → Download and organize images
+   - **Step 4** → Generate AI summaries
+3. **🔍 Explore Content** → Use interactive features for content discovery
 
-3. **Browse Content**: Explore articles through the interactive interface with:
-   - Search functionality
-   - Content filtering options
-   - Image galleries
-   - Summary previews
-
-## 📁 Project Structure
-
-```
-content-inspiration/
-├── config/config.yaml      # Application configuration
-├── data/
-│   ├── processed/          # Processed article storage
-│   └── raw/                # Raw input links for scraping
-├── images/                 # Downloaded article images
-├── logs/                   # Application logs
-├── src/
-│   ├── utils/              # Utility modules
-│   └── websites/           # Scraping modules and main app logic
-├── main.py                 # Main Streamlit application
-└── requirements.txt        # Python dependencies
-```
+---
 
 ## ⚙️ Configuration
 
-The application uses `config/config.yaml` for configuration. Key settings include:
+### Main Configuration (`config/config.yaml`)
 
-- **Data Storage**: Paths for processed articles, images and logs
-- **Sources**: URLs to scrape (e.g. `google_ai_blog`)
-- **Request Settings**: Timeout, retries and rate limiting
-- **Ollama Model**: Base URL, model name and timeout
-- **UI Settings**: Configure number of articles per page
+<div align="center">
+<table>
+<tr>
+<td width="50%">
 
-By default, the configuration sets `mistral` as the LLM model. If you want to
-use another model, open `config/config.yaml` and change the value of
-`ollama.model` to your preferred model name.
+#### **📁 Storage Settings**
+- Data paths configuration
+- Image storage locations
+- Log file destinations
 
-## 🔧 Troubleshooting
+#### **🌐 Source URLs**
+- Target websites (Google AI Blog)
+- Scraping endpoints
 
-**Common Issues:**
+</td>
+<td width="50%">
 
-- **Ollama Connection Error**: The app tries to start `ollama serve` automatically. Ensure the `ollama` CLI is installed and accessible.
-- **User Agent Issues**: Verify your `.env` file contains a valid user agent string
-- **Permission Errors**: Check write permissions for `data/` and `images/` directories
-- **Missing Dependencies**: Run `pip install -r requirements.txt` to ensure all packages are installed
+#### **🤖 AI Model Settings**
+- Ollama configuration
+- Model selection (`mistral` default)
+- Processing timeouts
+
+#### **🎨 UI Preferences**
+- Articles per page
+- Interface customization
+
+</td>
+</tr>
+</table>
+</div>
+
+### 🔧 Custom Model Configuration
+To use a different AI model, modify `config/config.yaml`:
+```yaml
+ollama:
+  model: "your-preferred-model"  # Change from default 'mistral'
+```
+
+---
+
+## 🚨 Troubleshooting
+
+<div align="center">
+
+### **Common Issues & Solutions**
+
+</div>
+
+| ❌ **Problem** | ✅ **Solution** |
+|----------------|-----------------|
+| **Ollama Connection Failed** | Ensure Ollama CLI is installed and model is pulled (`ollama pull mistral`) |
+| **User Agent Blocked** | Update `.env` with current browser user agent string |
+| **File Permission Denied** | Check write permissions for `data/` and `images/` directories |
+| **Module Import Error** | Reinstall dependencies: `pip install -r requirements.txt` |
+| **Port Already in Use** | Change Streamlit port: `streamlit run main.py --server.port 8502` |
+
+### 🔍 Debug Tips
+- Check logs in `logs/` directory
+- Verify Ollama service status: `ollama list`
+- Test user agent at: `httpbin.org/user-agent`
+
+---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Here's how to get started:
+
+### **Development Workflow**
+
+```bash
+# 1. Fork the repository on GitHub
+
+# 2. Clone your fork
+git clone https://github.com/YOUR-USERNAME/Content_Inspiration.git
+
+# 3. Create feature branch
+git checkout -b feature/amazing-feature
+
+# 4. Make your changes and commit
+git commit -m 'Add amazing feature'
+
+# 5. Push to your fork
+git push origin feature/amazing-feature
+
+# 6. Create Pull Request
+```
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+<div align="center">
+
+This project is licensed under the **MIT License**
+
+See the [LICENSE](LICENSE) file for full details
+
+</div>
+
+---
 
 ## 🙏 Acknowledgments
 
-- Google AI Blog for providing excellent content
-- Ollama team for the local AI model infrastructure
-- Streamlit for the intuitive web framework
+<div align="center">
+
+### **Special Thanks**
+
+🏢 **[Google AI Blog](https://ai.googleblog.com/)** → *For providing excellent technical content*
+
+🦙 **[Ollama Team](https://ollama.ai/)** → *For local AI model infrastructure*
+
+🎨 **[Streamlit](https://streamlit.io/)** → *For the intuitive web framework*
+
+🐍 **Python Community** → *For the amazing ecosystem of libraries*
 
 ---
+
+<div align="center">
+<sub>Built with ❤️ and powered by ☕</sub>
+
+<br><br>
+
+**[⭐ Star this repo](https://github.com/AdemCE-eng/Content_Inspiration)** • **[🐛 Report Bug](https://github.com/AdemCE-eng/Content_Inspiration/issues)** • **[💡 Request Feature](https://github.com/AdemCE-eng/Content_Inspiration/issues)**
+
+</div>
+
+</div>
