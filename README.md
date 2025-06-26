@@ -93,11 +93,13 @@ This automatically activates the virtual environment before launching Streamlit.
 ```
 content-inspiration/
 ├── config/config.yaml      # Application configuration
-├── data/processed/         # Processed article storage
+├── data/
+│   ├── processed/          # Processed article storage
+│   └── raw/                # Raw input links for scraping
 ├── images/                 # Downloaded article images
 ├── logs/                   # Application logs
 ├── src/
-│   ├── utils/              # Utility modules (logger, rate_limiter, retry)
+│   ├── utils/              # Utility modules
 │   └── websites/           # Scraping modules and main app logic
 ├── main.py                 # Main Streamlit application
 └── requirements.txt        # Python dependencies
@@ -111,7 +113,7 @@ The application uses `config/config.yaml` for configuration. Key settings includ
 - **Sources**: URLs to scrape (e.g. `google_ai_blog`)
 - **Request Settings**: Timeout, retries and rate limiting
 - **Ollama Model**: Base URL, model name and timeout
-- **UI Settings**: Pagination and summary length
+- **UI Settings**: Configure number of articles per page
 
 By default, the configuration sets `mistral` as the LLM model. If you want to
 use another model, open `config/config.yaml` and change the value of
