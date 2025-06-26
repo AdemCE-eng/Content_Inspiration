@@ -103,7 +103,8 @@ def display_article(article):
     st.markdown("---")
     
     # Get article index from file path
-    article_index = article.get('_file_path', '').split('\\')[-1].split('_')[0]
+    file_path = article.get('_file_path', '')
+    article_index = os.path.basename(file_path).split('_')[0]
     
     for section_idx, section in enumerate(article.get('sections', [])):
         if section.get('section_title'):
