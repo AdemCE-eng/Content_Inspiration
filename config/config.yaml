@@ -25,4 +25,3 @@ log_level: "INFO"
 
 # UI Settings
 articles_per_page: 10
-max_summary_length: 300
