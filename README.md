@@ -118,6 +118,7 @@ Create `.env` file in project root:
 ```env
 USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 ```
+   > **Note**: Replace with your actual browser's user agent string. You can find this by searching "what is my user agent" in your browser.
 
 #### **5️⃣ Setup Ollama**
 ```bash
@@ -174,36 +175,12 @@ run_app.bat
 
 ### Main Configuration (`config/config.yaml`)
 
-<div align="center">
-<table>
-<tr>
-<td width="50%">
-
-#### **📁 Storage Settings**
-- Data paths configuration
-- Image storage locations
-- Log file destinations
-
-#### **🌐 Source URLs**
-- Target websites (Google AI Blog)
-- Scraping endpoints
-
-</td>
-<td width="50%">
-
-#### **🤖 AI Model Settings**
-- Ollama configuration
-- Model selection (`mistral` default)
-- Processing timeouts
-
-#### **🎨 UI Preferences**
-- Articles per page
-- Interface customization
-
-</td>
-</tr>
-</table>
-</div>
+| Setting Category | Description |
+|------------------|-------------|
+| **📁 Storage Settings** | Configure data paths, image storage locations, and log file destinations |
+| **🌐 Source URLs** | Define target websites (Google AI Blog) and scraping endpoints |
+| **🤖 AI Model Settings** | Set up Ollama configuration, model selection (`mistral` default), and processing timeouts |
+| **🎨 UI Preferences** | Customize articles per page and interface settings |
 
 ### 🔧 Custom Model Configuration
 To use a different AI model, modify `config/config.yaml`:
@@ -215,12 +192,6 @@ ollama:
 ---
 
 ## 🚨 Troubleshooting
-
-<div align="center">
-
-### **Common Issues & Solutions**
-
-</div>
 
 | ❌ **Problem** | ✅ **Solution** |
 |----------------|-----------------|
