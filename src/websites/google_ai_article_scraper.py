@@ -194,7 +194,3 @@ def scrape_articles_from_links(progress_callback=None):
     except Exception as e:
         logger.error(f"Fatal error in article scraping: {e}")
         return 0
-    
-if __name__ == "__main__":
-    # Example usage
-    url = get_url
