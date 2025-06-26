@@ -113,6 +113,10 @@ The application uses `config/config.yaml` for configuration. Key settings includ
 - **Ollama Model**: Base URL, model name and timeout
 - **UI Settings**: Pagination and summary length
 
+By default, the configuration sets `mistral` as the LLM model. If you want to
+use another model, open `config/config.yaml` and change the value of
+`ollama.model` to your preferred model name.
+
 ## 🔧 Troubleshooting
 
 **Common Issues:**
