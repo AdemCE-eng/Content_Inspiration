@@ -14,7 +14,6 @@ def count_new_articles():
     try:
         df = pd.read_csv(csv_path)
         if 'checked' not in df.columns:
-            # If the column is missing, treat all rows as unchecked
             return len(df)
         
         # Ensure boolean dtype and count entries that are not checked
