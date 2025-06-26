@@ -69,7 +69,7 @@ content-inspiration/
 │
 ├── 🚀 main.py                   # Streamlit application entry point
 ├── 📋 requirements.txt          # Python dependencies
-└── 🏃‍♂️ run_app.bat              # Windows launch script
+└── 🏃‍♂️ run_app.bat               # Windows launch script
 ```
 
 ---
