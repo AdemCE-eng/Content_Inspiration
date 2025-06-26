@@ -269,7 +269,24 @@ def run_streamlit_app():
             # Results count
             st.markdown("---")
             st.info(f"Found {len(filtered_articles)} matching articles")
+            
+        # Pagination setup with basic validation of YAML config
+        articles_per_page = config.get('articles_per_page')
+        if not isinstance(articles_per_page, int) or articles_per_page <= 0:
+            st.warning("Invalid articles_per_page in config; using default of 10.")
+            articles_per_page = 10
+        else:
+            st.caption(f"Using articles_per_page={articles_per_page} from config")
 
+        total_pages = max((len(filtered_articles) - 1) // articles_per_page + 1, 1)
+        if 'current_page' not in st.session_state:
+            st.session_state.current_page = 1
+        current_page = min(max(st.session_state.current_page, 1), total_pages)
+
+        start_idx = (current_page - 1) * articles_per_page
+        end_idx = start_idx + articles_per_page
+        page_articles = filtered_articles[start_idx:end_idx]
+        
         # Main page content
         st.markdown("""
             <div style='display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;'>
@@ -287,7 +304,8 @@ def run_streamlit_app():
         st.markdown("---")
         
         # Display articles in table format
-        for idx, article in enumerate(filtered_articles):
+        for relative_idx, article in enumerate(page_articles):
+            idx = start_idx + relative_idx
             title = article.get('title', 'Untitled')
             date = article.get('published_date', 'No date')
             url = article.get('url', '')
@@ -338,7 +356,20 @@ def run_streamlit_app():
                 st.session_state.read_articles[article_id] = True
             else:
                 st.session_state.read_articles[article_id] = False
-
+        # Navigation bar at the bottom
+        nav_cols = st.columns([1, 1, 1])
+        with nav_cols[0]:
+            if st.button("⬅️ Previous", disabled=current_page <= 1, key="prev_page_bottom"):
+                st.session_state.current_page -= 1
+                st.rerun()
+        nav_cols[1].markdown(
+            f"<div style='text-align: center;'>Page {current_page} of {total_pages}</div>",
+            unsafe_allow_html=True
+        )
+        with nav_cols[2]:
+            if st.button("Next ➡️", disabled=current_page >= total_pages, key="next_page_bottom"):
+                st.session_state.current_page += 1
+                st.rerun()
     # Save read status at the end
     save_read_status(st.session_state.read_articles)
 

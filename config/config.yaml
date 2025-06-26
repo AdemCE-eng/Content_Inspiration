@@ -24,4 +24,4 @@ ollama:
 log_level: "INFO"
 
 # UI Settings
-articles_per_page: 10
+articles_per_page: 12
