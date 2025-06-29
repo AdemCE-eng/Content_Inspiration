@@ -5,6 +5,8 @@ from PIL import Image
 from datetime import datetime
 import os
 from src.utils.config import get_config
+from src.utils.pdf_exporter import MultiArticlePDFExporter
+import tempfile
 
 config = get_config()
 
@@ -169,7 +171,114 @@ def save_read_status(read_status):
     status_path = os.path.join(status_dir, 'read_status.json')
     with open(status_path, 'w') as f:
         json.dump(read_status, f)
+        
+def create_export_section(filtered_articles):
+    """Create the export section in the sidebar."""
+    with st.expander("📄 Export Articles", expanded=False):
+        st.write("Select articles to export:")
+        
+        # Initialize export selection
+        if 'export_selection' not in st.session_state:
+            st.session_state.export_selection = set()
+        
+        # Select all/none buttons
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Select All", use_container_width=True):
+                st.session_state.export_selection = set(range(len(filtered_articles)))
+                st.rerun()
+        with col2:
+            if st.button("Clear All", use_container_width=True):
+                st.session_state.export_selection = set()
+                st.rerun()
+        
+        # Article selection checkboxes
+        for idx, article in enumerate(filtered_articles):
+            title = article.get('title', f'Article {idx}')
+            display_title = title[:50] + ('...' if len(title) > 50 else '')
+            
+            if st.checkbox(
+                display_title,
+                key=f"export_{idx}",
+                value=idx in st.session_state.export_selection
+            ):
+                st.session_state.export_selection.add(idx)
+            else:
+                st.session_state.export_selection.discard(idx)
+        
+        # Export button
+        if st.session_state.export_selection:
+            st.write(f"Selected: {len(st.session_state.export_selection)} articles")
+            
+            if st.button("📄 Export to PDF", type="primary", use_container_width=True):
+                export_selected_articles(filtered_articles)
 
+def export_selected_articles(filtered_articles):
+    """Export selected articles to PDF."""
+    try:
+        selected_indices = st.session_state.export_selection
+        selected_articles = [filtered_articles[idx] for idx in selected_indices]
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            temp_path = tmp_file.name
+        
+        # Export to PDF
+        with st.spinner('Generating PDF...'):
+            exporter = MultiArticlePDFExporter()
+            success = exporter.export_articles_to_pdf(selected_articles, temp_path)
+        
+        if success:
+            # Read the PDF file
+            with open(temp_path, 'rb') as pdf_file:
+                pdf_data = pdf_file.read()
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+            # Extract publishers from selected articles
+            publishers = set()
+            for article in selected_articles:
+                url = article.get('url', '')
+                if 'research.google' in url.lower():
+                    publishers.add('Google_Research')
+                elif 'nvidia.com' in url.lower():
+                    publishers.add('NVIDIA')
+                elif url:
+                    # Extract domain-based publisher
+                    try:
+                        from urllib.parse import urlparse
+                        domain = urlparse(url).netloc.replace('www.', '').split('.')[0]
+                        publishers.add(domain.capitalize())
+                    except:
+                        pass
+            
+            # Create filename based on publishers
+            if len(publishers) == 1:
+                publisher_name = list(publishers)[0]
+                filename = f"content_inspiration_{publisher_name}_{timestamp}.pdf"
+            else:
+                filename = f"content_inspiration_articles_{timestamp}.pdf"
+            
+            # Provide download button
+            st.download_button(
+                label="📥 Download PDF",
+                data=pdf_data,
+                file_name=filename,
+                mime="application/pdf",
+                use_container_width=True
+            )
+            
+            st.success(f"✅ Successfully exported {len(selected_articles)} articles!")
+            
+            # Clean up temp file
+            os.unlink(temp_path)
+        else:
+            st.error("❌ Failed to export articles. Check logs for details.")
+            
+    except Exception as e:
+        st.error(f"❌ Export error: {str(e)}")
+        
 def run_streamlit_app():
     # Load articles and read status
     articles = load_articles()
@@ -270,6 +379,8 @@ def run_streamlit_app():
             # Results count
             st.markdown("---")
             st.info(f"Found {len(filtered_articles)} matching articles")
+            # Add export section
+            create_export_section(filtered_articles)
             
         # Pagination setup with basic validation of YAML config
         articles_per_page = config.get('articles_per_page')
