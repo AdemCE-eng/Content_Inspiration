@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import json
 from datetime import datetime, timezone
 import os
+import re
 import pandas as pd
 from dotenv import load_dotenv
 from src.utils.logger import setup_logger
@@ -10,6 +11,7 @@ from src.utils.rate_limiter import rate_limit
 from src.utils.retry import retry_on_failure
 from src.utils.config import get_config
 import glob
+from urllib.parse import urljoin
 
 # Load environment variables
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
@@ -34,6 +36,10 @@ CSV_FILE = os.path.join('.', 'data', 'raw', 'google_ai_links.csv')
 DATA_DIR = config['data_dir']
 REQUESTS_PER_SECOND = config.get('requests_per_second', 1)
 SECONDS_PER_REQUEST = 1 / REQUESTS_PER_SECOND if REQUESTS_PER_SECOND else 1
+MONTH_NAMES = (
+    "January|February|March|April|May|June|July|August|"
+    "September|October|November|December"
+)
 
 @rate_limit(seconds_per_request=SECONDS_PER_REQUEST)
 @retry_on_failure(max_retries=config.get('max_retries', 3))
@@ -49,10 +55,49 @@ def get_url(url):
         logger.error(f"Error fetching {url}: {e}")
         raise
 
+def extract_article_metadata(soup):
+    """Extract article date and author from the current Google Research hero block."""
+    if not soup:
+        return "", ""
+
+    description = (
+        soup.select_one(".basic-hero--blog-detail__description")
+        or soup.select_one(".bhoig__description")
+    )
+    if not description:
+        return "", ""
+
+    parts = [
+        part.get_text(" ", strip=True)
+        for part in description.find_all("p")
+        if part.get_text(" ", strip=True)
+    ]
+    if parts:
+        return parts[0], parts[1] if len(parts) > 1 else ""
+
+    description_text = description.get_text(" ", strip=True)
+    date_match = re.search(
+        rf"\b(?:{MONTH_NAMES})\s+\d{{1,2}},\s+\d{{4}}\b",
+        description_text,
+    )
+    if not date_match:
+        return "", description_text
+
+    date = date_match.group(0)
+    author = description_text.replace(date, "", 1).strip(" -|,")
+    return date, author
+
+def get_image_url(img, base_url):
+    """Return a usable absolute image URL from src/srcset-style attributes."""
+    img_url = img.get("src") or img.get("data-src")
+    if not img_url:
+        srcset = img.get("srcset") or img.get("data-srcset")
+        if srcset:
+            img_url = srcset.split(",")[0].strip().split(" ")[0]
+    return urljoin(base_url, img_url) if img_url else None
+
 def scrape_data(soup, url):
-    p_tags = soup.find_all("p", limit=10)
-    date = p_tags[8].text.strip() if len(p_tags) > 8 else ""
-    author = p_tags[9].text.strip() if len(p_tags) > 9 else ""
+    date, author = extract_article_metadata(soup)
 
     article_data = {
         "title": soup.find("h1").text.strip() if soup and soup.find("h1") else "No Title",
@@ -97,12 +142,12 @@ def scrape_data(soup, url):
             current_section["paragraphs"].append(elem.text.strip())
             # Check for images inside paragraphs too
             for img in elem.find_all("img"):
-                img_url = img.get("src")
+                img_url = get_image_url(img, url)
                 if img_url:
                     logger.debug(f"Found image in paragraph: {img_url}")
                     current_section["images"].append(img_url)
         elif elem.name == "img":
-            img_url = elem.get("src")
+            img_url = get_image_url(elem, url)
             if img_url:
                 logger.debug(f"Found standalone image: {img_url}")
                 current_section["images"].append(img_url)

@@ -15,7 +15,7 @@ config = get_config()
 CSV_FILE = './data/raw/google_ai_links.csv'
 
 # Load environment variables
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
 
 # Get User-Agent from environment variables with validation

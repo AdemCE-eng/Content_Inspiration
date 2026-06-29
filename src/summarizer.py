@@ -28,6 +28,7 @@ class ArticleSummarizer:
             logger.info("Ollama server not running. Attempting to start it...")
             if self._start_server() and self._wait_for_server():
                 logger.info("Ollama server started successfully")
+                self.started_server = True
             else:
                 error_msg = (
                     "Could not connect to Ollama. Please ensure:\n"
@@ -86,8 +87,8 @@ class ArticleSummarizer:
         return False
     
     def stop_server(self):
-        """Terminate Ollama server regardless of who started it."""
-        if self.server_process and self.server_process.poll() is None:
+        """Terminate only the Ollama server this process started."""
+        if self.started_server and self.server_process and self.server_process.poll() is None:
             if os.name == "nt":
                 subprocess.run(
                     ["taskkill", "/F", "/T", "/PID", str(self.server_process.pid)],
@@ -100,19 +101,6 @@ class ArticleSummarizer:
                 self.server_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.server_process.kill()
-        elif self.server_running_before:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/F", "/IM", "ollama.exe"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            else:
-                subprocess.run(
-                    ["pkill", "-f", "ollama"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
         self.server_process = None
         self.started_server = False
         self.server_running_before = False

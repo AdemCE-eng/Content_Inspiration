@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+from urllib.parse import urljoin
 from src.utils.config import get_config
 import pandas as pd
 from src.utils.logger import setup_logger
@@ -67,13 +68,19 @@ def get_links(soup, base_url):
     logger.info(f"Found {len(cards)} article cards")
 
     for card_div in cards:
-        title_span = card_div.find('span', class_='headline-5')
-        link_tag = card_div.find('a')
+        title_span = (
+            card_div.select_one('.js-gt-item-id')
+            or card_div.select_one('.headline-6')
+            or card_div.select_one('.headline-5')
+        )
+        link_tag = card_div.find('a', href=True)
         if title_span and link_tag and link_tag.has_attr('href'):
-            raw_title = title_span.text.strip()
+            raw_title = title_span.get_text(" ", strip=True)
             post_url = link_tag['href']
-            if not post_url.startswith('http'):
-                post_url = base_url.replace("/blog/", "") + post_url
+            if '/blog/' not in post_url:
+                logger.debug(f"Skipping non-blog card URL: {post_url}")
+                continue
+            post_url = urljoin(base_url, post_url)
             raw_titles.append(raw_title)
             post_urls.append(post_url)
         else:
@@ -113,6 +120,9 @@ def scrape_homepage():
             existing_df = pd.DataFrame(columns=['title', 'url'])
             logger.info("Created new DataFrame")
 
+        before_urls = set(existing_df['url'].dropna()) if 'url' in existing_df.columns else set()
+        new_links = [(title, url) for title, url in links if url not in before_urls]
+
         # Update DataFrame
         new_df = pd.DataFrame(links, columns=['title', 'url'])
         new_df['checked'] = False
@@ -128,7 +138,8 @@ def scrape_homepage():
 
         # Save results
         combined_df.to_csv(csv_file, index=False)
-        logger.info(f"Saved {len(combined_df)} entries to CSV")
+        logger.info(f"Saved {len(combined_df)} entries to CSV; {len(new_links)} new links")
+        return new_links
         
     except Exception as e:
         logger.error(f"Unexpected error in scrape_homepage: {str(e)}", exc_info=True)
