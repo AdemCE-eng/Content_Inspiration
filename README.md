@@ -47,6 +47,27 @@
 
 ---
 
+## 📸 Screenshots
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="50%">
+<img src="docs/screenshots/library.png" alt="Article library view" width="100%"/>
+<br/>
+<sub>Article library — search, date filtering, and PDF export</sub>
+</td>
+<td align="center" width="50%">
+<img src="docs/screenshots/article.png" alt="Article reader view" width="100%"/>
+<br/>
+<sub>Reader view — editorial typography with inline images</sub>
+</td>
+</tr>
+</table>
+</div>
+
+---
+
 ## 🏗️ Project Architecture
 
 ```
