@@ -75,23 +75,22 @@ def scrape_and_process():
 
 def main():
     st.set_page_config(
-        page_title="Google AI Article Viewer",
+        page_title="Content Inspiration",
         page_icon="📚",
-        layout="wide"
+        layout="centered"
     )
 
     # Add scrape button in sidebar
     with st.sidebar:
-        st.title("Actions")
-        if st.button("🔄 Scrape New Articles"):
+        st.subheader("Library")
+        if st.button("Fetch new articles", icon=":material/refresh:", type="primary", use_container_width=True):
             try:
                 results = scrape_and_process()
                 if results:
-                    st.success(
-                        f"✨ Scraping completed successfully!\n\n"
-                    )
+                    st.success("Scraping completed successfully.")
             except Exception as e:
                 st.error(f"Failed to complete scraping: {str(e)}")
+        st.divider()
 
     # Run the article viewer
     from src.app import run_streamlit_app
